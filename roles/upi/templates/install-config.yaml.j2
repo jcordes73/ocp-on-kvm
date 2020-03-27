@@ -8,12 +8,10 @@ proxy:
 compute:
 - hyperthreading: {{ worker_node_cpu_hyperthreading }} 
   name: worker
-  platform: {}
   replicas: 0
 controlPlane:
   hyperthreading: {{ master_node_cpu_hyperthreading }}
   name: master
-  platform: {}
   replicas: {{ groups['masters'] | length }}
 metadata:
   name: {{ ocp_cluster_name }}
@@ -35,10 +33,8 @@ imageContentSources:
 - mirrors:
   - {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-release-dev
   source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
-pullSecret: '{"auths":{"{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}": {"auth": "{{ nexus_digest }}","email": "noemail@localhost"}}}'
 additionalTrustBundle: |
 {{ additional_trustbundle }}
-{% else %}
-pullSecret: '{{ pull_secrets }}'
 {% endif %}
+pullSecret: '{{ pull_secrets }}'
 sshKey: "{{ ssh_key }}" 

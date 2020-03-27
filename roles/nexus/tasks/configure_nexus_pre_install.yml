@@ -13,6 +13,14 @@
     group: nexus
     recurse: yes
     state: directory
+- name: Copy jetty-https.xml
+  copy:
+    src: jetty-https.xml
+    dest: /opt/nexus/etc/jetty
+- name: Copy nexus.jvmoption
+  template:
+    src: nexus.vmoptions.j2
+    dest: /opt/nexus/bin/nexus.vmoptions
 - name: Change Nexus working directory ownership
   file:
     path: /opt/sonatype-work

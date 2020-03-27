@@ -13,8 +13,8 @@
     state: present
 - name: Create dnsmasq config
   template:
-    src: dnsmasq-ocplabs.j2
-    dest: /etc/dnsmasq.d/ocplabs.conf
+    src: "dnsmasq-ocp.j2"
+    dest: "/etc/dnsmasq.d/{{ ocp_cluster_name }}.conf"
 - name: restart dnsmasq
   service:
     name: dnsmasq

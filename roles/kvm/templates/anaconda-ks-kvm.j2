@@ -12,7 +12,7 @@ keyboard --vckeymap=de --xlayouts='de'
 lang en_US.UTF-8
 
 # Network information
-network  --bootproto=dhcp --device={{ kvm_interface }} --ipv6=auto --activate
+network  --onboot yes --bootproto dhcp --device {{ kvm_interface }} --noipv6 --activate
 
 # Use network installation
 url --url="http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-RHEL/8.1"
@@ -28,7 +28,11 @@ timezone Europe/Berlin --isUtc --ntpservers={{ hostvars[groups['bastionhost'][0]
 bootloader --append=" crashkernel=auto" --location=mbr --boot-drive={{ kvm_boot_device }}
 autopart --type=lvm
 # Partition clearing information
-clearpart --all --initlabel --drives={{ kvm_boot_device }}{% if kvm_image_device is defined %},{{ kvm_image_device }}{% endif %}
+{% if kvm_image_device is defined %}
+clearpart --all --initlabel --drives={{ kvm_boot_device }},{{ kvm_image_device }}
+{% else %}
+clearpart --all --initlabel --drives={{ kvm_boot_device }}
+{% endif %}
 reboot
 
 %packages

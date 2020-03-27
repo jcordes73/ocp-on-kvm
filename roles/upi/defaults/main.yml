@@ -1,13 +1,29 @@
+# Version and type
+ocp_release: 4.4.0-rc.4
+ocp_type: bare-metal
+# Network
+ocp_network_cluster_cidr: "10.128.0.0/14"
+ocp_network_cluster_hostprefix: "23"
+ocp_network_machine_cidr: "192.168.1.0/24"
+ocp_network_service_network: "172.30.0.0/16"
+# Virtual Machines
 cpu_model: "host-passthrough"
-bootstrap_node_memory: 8192
+bootstrap_node_memory: 6144
 bootstrap_node_cpu: 4
-bootstrap_node_disksize: 40
-master_node_memory: 8192
+bootstrap_node_disksize: 40G
+master_node_memory: 6144
 master_node_cpu: 4
 master_node_cpu_hyperthreading: Enabled
-master_node_disksize: 40
+master_node_disksize: 40G
 worker_node_memory: 4096 
-worker_node_cpu: 2
+worker_node_cpu: 4
 worker_node_cpu_hyperthreading: Enabled
-worker_node_disksize: 40
+worker_node_disksize: 40G
 os_variant: rhel8.0
+# Install assets
+download_initramfs: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/pre-release/4.4.0-rc.1/rhcos-4.4.0-rc.1-x86_64-installer-initramfs.x86_64.img
+download_kernel: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/pre-release/4.4.0-rc.1/rhcos-4.4.0-rc.1-x86_64-installer-kernel-x86_64
+download_image_metal: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/pre-release/4.4.0-rc.1/rhcos-4.4.0-rc.1-x86_64-metal.x86_64.raw.gz
+download_image_qemu: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/pre-release/4.4.0-rc.1/rhcos-4.4.0-rc.1-x86_64-qemu.x86_64.qcow2.gz
+download_client: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.4.0-rc.4/openshift-client-linux.tar.gz
+download_installer: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.4.0-rc.4/openshift-install-linux.tar.gz

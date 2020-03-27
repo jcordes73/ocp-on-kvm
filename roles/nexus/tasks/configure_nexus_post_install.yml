@@ -1,11 +1,23 @@
-- set_facts:
+- set_fact:
     bastion_host: "{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_port }}"
 - name: Change admin password
   shell:
-    cmd: curl -X PUT -u "admin:$(cat /mnt/detached-storage/sonatype-work/nexus3/admin.password)" "http://{{ bastion_host }}/service/rest/beta/security/users/admin/change-password" -H "accept: application/json" -H "Content-Type: text/plain" -d "admin123"
+    cmd: "curl -v -X PUT -u \"admin:$(cat /mnt/detached-storage/sonatype-work/nexus3/admin.password)\" \"http://{{ bastion_host }}/service/rest/beta/security/users/admin/change-password\" -H \"accept: application/json\" -H \"Content-Type: text/plain\" -d \"{{ nexus_admin_password }}\""
 - name: Create Blob-Storage
   shell:
-    cmd: curl -X POST - "admin:admin123" "http://{{ bastion_host }}/service/rest/beta/blobstores/file" -H "accept: application/json" -H "Content-Type: application/json" -d "{ \"path\": \"/mnt/detached-storage/nexus-blob\", \"name\": \"ocp4labs\"}
+    cmd: "curl -v -u '{{ nexus_admin_user }}:{{ nexus_admin_password }}' 'http://{{ bastion_host }}/service/rest/beta/blobstores/file' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{ \"path\": \"/mnt/detached-storage/nexus-blob\", \"name\": \"{{ ocp_cluster_name }}\"}\"'"
+- name: Enable HTTP service on port {{ nexus_docker_secure_port }} on firewalld
+  firewalld:
+    zone: public
+    port: "{{ item }}/tcp"
+    permanent: yes
+    immediate: yes
+    state: enabled
+  with_items:
+  - "{{ nexus_docker_secure_port }}"
 - name: Create Docker-Repos
   shell:
-    cmd: curl -X POST -u "admin:admin123" "http://{{ bastion_host }}/service/rest/beta/repositories/docker/hosted" -H "accept: application/json" -H "Content-Type: application/json" -d "{ \"name\": \"ocp4labs\", \"online\": true, \"storage\": { \"blobStoreName\": \"default\", \"strictContentTypeValidation\": true, \"writePolicy\": \"redeploy\" }, \"docker\": { \"v1Enabled\": false, \"forceBasicAuth\": true, \"httpPort\": 5000, \"httpsPort\": {{ nexus_docker_port }} }}"
+    cmd: "curl -v -u '{{ nexus_admin_user }}:{{ nexus_admin_password }}' 'http://{{ bastion_host }}/service/rest/beta/repositories/docker/hosted' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{ \"name\": \"{{ ocp_cluster_name }}\", \"online\": true, \"storage\": { \"blobStoreName\": \"{{ ocp_cluster_name }}\", \"strictContentTypeValidation\": true, \"writePolicy\": \"ALLOW_ONCE\" }, \"docker\": { \"v1Enabled\": false, \"forceBasicAuth\": false, \"httpPort\": {{ nexus_docker_port }}, \"httpsPort\": {{ nexus_docker_secure_port }} }}'"
+- name: Enable Bearer Token for Docker Repositories
+  shell:
+    cmd: "curl -X PUT -u '{{ nexus_admin_user }}:{{ nexus_admin_password }}' 'http://{{ bastion_host }}/service/rest/beta/security/realms/active' -H 'accept: application/json' -H 'Content-Type: application/json' -d '[ \"NexusAuthenticatingRealm\", \"NexusAuthorizingRealm\", \"DockerToken\" ]'"

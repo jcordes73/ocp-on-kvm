@@ -4,12 +4,12 @@ distinguished_name = req_distinguished_name
 req_extensions     = req_ext
 [ req_distinguished_name ]
 countryName         = DE
-organizationName    = {{ ocp4_cluster_domain_name }}
-commonName          = ocplabs
+organizationName    = {{ ocp_cluster_domain_name }}
+commonName          = {{ ocp_cluster_name }}
 [ req_ext ]
 subjectAltName = @alt_names
 [alt_names]
-DNS.1   = bastion.{{ ocp4_cluster_name }}.{{ ocp4_cluster_domain_name }}
+DNS.1   = {{ hostvars['bastion']['inventory_hostname'] }}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}
 IP.1    = {{ hostvars['bastion']['ansible_host'] }}
 [ v3_ca ]
 subjectKeyIdentifier = hash

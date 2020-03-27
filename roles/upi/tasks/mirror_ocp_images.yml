@@ -14,5 +14,3 @@
     path: "{{ ocp_home }}/pull-secrets-temp.json"
     state: absent
 - shell: "{{ ocp_home }}/bin/oc adm release mirror -a {{ ocp_home }}/pull-secrets.json --from=quay.io/openshift-release-dev/ocp-release:{{ ocp_release }}-x86_64 --to-release-image={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-release-dev:{{ ocp_release }} --to={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-release-dev --insecure=true"
-  ignore_errors: yes
-  retries: 3

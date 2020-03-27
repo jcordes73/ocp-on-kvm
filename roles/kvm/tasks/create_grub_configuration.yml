@@ -1,4 +1,4 @@
-- command: cat {{ansible_ssh_private_key_file}}
+- command: cat {{ssh_public_key_file}}
   register: ssh_key_output 
 - set_fact:
     anaconda_ssh_key: "{{ ssh_key_output.stdout }}"
@@ -6,3 +6,26 @@
     src: grub-kvm.j2
     dest: /var/lib/tftpboot/uefi/grub.cfg-{{ hostvars[item]['ethernet'] }}
   with_items: "{{ groups['kvm'] }}"
+- selinux:
+    state: disabled
+- template:
+    src: anaconda-ks-kvm.j2
+    dest: /var/www/html/RedHat-RHEL/anaconda-ks-kvm.cfg
+- file:
+    path: /var/www/html
+    mode: g+r
+    recurse: yes
+- shell: chcon -Rv --type=httpd_t /var/www/html
+- selinux:
+    policy: targeted
+    state: enforcing
+- name: Copy vmlinuz
+  copy:
+    src: "/var/www/html/RedHat-RHEL/8.1/images/pxeboot/vmlinuz"
+    dest: /var/lib/tftpboot/images/RHEL-8.1/vmlinuz
+    mode: '644'
+- name: Copy initramfs
+  copy:
+    src: "/var/www/html/RedHat-RHEL/8.1/images/pxeboot/initrd.img"
+    dest: /var/lib/tftpboot/images/RHEL-8.1/initramfs.img
+    mode: '644'

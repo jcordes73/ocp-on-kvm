@@ -20,9 +20,6 @@
   mount:
     path: /mnt/rhel8-install/
     state: unmounted
-- template:
-    src: anaconda-ks-kvm.j2
-    dest: /var/www/html/RedHat-RHEL/anaconda-ks-kvm.cfg
 - shell: chcon -Rv --type=httpd_sys_content_t /var/www/html
 - selinux:
     policy: targeted

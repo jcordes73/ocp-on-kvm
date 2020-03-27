@@ -2,11 +2,19 @@
      cmd: |
        virsh destroy {{ item }}
        virsh undefine {{ item }} --nvram
-       rm -f /var/lib/libvirt/images/{{ item }}.img
+       rm -f /var/lib/libvirt/images/{{ item }}.qcow2
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   with_flattened:
   - "{{ groups['bootstrap'] }}"
   - "{{ groups['workers'] }}"
   - "{{ groups['masters'] }}"
-  ignore_errors: yes
-  retries: 3
+  when: '"bastionhost" in group_names'
+- shell:
+     cmd: |
+       virsh destroy {{ item }}
+       virsh undefine {{ item }} --nvram
+       rm -f /var/lib/libvirt/images/{{ item }}.qcow2
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_flattened:
+  - "{{ groups['all'] }}"
+  when: '"kvm" in group_names and hostvars[item].kvm_host is defined and hostvars[item].kvm_host == inventory_hostname'

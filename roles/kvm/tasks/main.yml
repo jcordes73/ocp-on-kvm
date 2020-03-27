@@ -7,6 +7,9 @@
 - name: Create Grub configuration for KVM Nodes
   import_tasks: create_grub_configuration.yml
   when: '"bastionhost" in group_names and kvm_install_type == "pxe"'
+- name: Clean known hosts
+  import_tasks: clean_known_hosts.yml
+  when: '"bastionhost" in group_names and kvm_install_type == "pxe"'
 - name: Boot KVM Hosts via Wake-On-LAN
   import_tasks: boot_wake_on_lan.yml
   when: '"kvm" in group_names and kvm_boot_type == "wake-on-lan"'

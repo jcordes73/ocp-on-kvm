@@ -7,8 +7,9 @@
   - httpd
   - rsyslog
   - haproxy
-  - { role: squid, when: squid_install }
-  - { role: nexus, when: ocp_install_type == 'disconnected' }
+  - squid
+  - nexus
+  - nfs
   - kvm
 - hosts: kvm
   gather_facts: no

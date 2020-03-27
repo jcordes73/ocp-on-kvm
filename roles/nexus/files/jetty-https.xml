@@ -21,6 +21,7 @@
   </New>
 
   <New id="sslContextFactory" class="org.eclipse.jetty.util.ssl.SslContextFactory">
+    <Set name="certAlias">jetty</Set>
     <Set name="KeyStorePath"><Property name="ssl.etc"/>/keystore.jks</Set>
     <Set name="KeyStorePassword">password</Set>
     <Set name="KeyManagerPassword">password</Set>

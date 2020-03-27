@@ -12,3 +12,7 @@
     src: /opt/sonatype-work/nexus3/log
     dest: /var/log/nexus
     state: link
+- name: Wait until Nexus is started
+  wait_for:
+   path: /var/log/nexus/nexus.log
+   search_regex: "Started Sonatype Nexus"
