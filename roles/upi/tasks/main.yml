@@ -14,9 +14,7 @@
   import_tasks: install_installer_assets.yml
 - name: Mirror OCP 4 Images for Disconnected Install
   import_tasks: mirror_ocp_images.yml
-  when: ocp_install_type == 'disconnected'
-- name: Prepare KVM Hosts
-  import_tasks: prepare_kvm_hosts.yml
+  when: ocp_install_type is defined and ocp_install_type == 'disconnected'
 - name: Remove all nodes
   import_tasks: ../../kvm/tasks/remove_all_nodes.yml
 - name: Initialize Bootstrap nodes

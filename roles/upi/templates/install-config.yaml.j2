@@ -25,7 +25,7 @@ networking:
   - {{ ocp_network_service_network }}
 platform:
   none: {}
-{% if ocp_install_type == 'disconnected' %}
+{% if ocp_install_type is defined and ocp_install_type == 'disconnected' %}
 imageContentSources:
 - mirrors:
   - {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-release-dev

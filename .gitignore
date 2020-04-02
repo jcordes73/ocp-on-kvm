@@ -1,2 +1,3 @@
 inventory
 roles/kvm/vars/subscription-vault.yml
+ansible.log

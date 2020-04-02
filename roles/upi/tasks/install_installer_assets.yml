@@ -13,14 +13,14 @@
   - worker.ign
 - get_url:
     url: "{{ download_kernel }}"
-    dest: /var/lib/tftpboot/images/RedHat-CoreOS/vmlinuz
+    dest: /var/www/html/RedHat-CoreOS/vmlinuz
   retries: 2
   delay: 3
   register: result
   until: result is succeeded
 - get_url:
     url: "{{ download_initramfs }}"
-    dest: /var/lib/tftpboot/images/RedHat-CoreOS/initramfs.img
+    dest: /var/www/html/RedHat-CoreOS/initramfs.img
   retries: 2
   delay: 3
   register: result
@@ -49,21 +49,6 @@
     dest: /var/www/html/RedHat-CoreOS/rhcos-metal.raw.gz.sha256sum
     state: link
     remote_src: yes
-- get_url:
-    url: "{{ download_image_qemu }}"
-    dest: /var/www/html/RedHat-CoreOS/rhcos-{{ ocp_release }}-qemu.qcow2.gz
-  retries: 2
-  delay: 3
-  register: result
-  until: result is succeeded
-- file:
-    path: /var/www/html/RedHat-CoreOS/rhcos-qcow.qcow2.gz
-    state: absent
-- file:
-     src: /var/www/html/RedHat-CoreOS/rhcos-{{ ocp_release }}-qemu.qcow2.gz
-     dest: /var/www/html/RedHat-CoreOS/rhcos-qemu.qcow2.gz
-     state: link
-     remote_src: yes
 - file:
     path: /var/www/html
     mode: g+r
