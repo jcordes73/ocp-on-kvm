@@ -1,0 +1,15 @@
+if (outcome != success) of /core-service=module-loading/:list-resource-loader-paths(module=org.postgresql)
+  module add --name=org.postgresql --dependencies=javax.api,javax.transaction.api --resources=/usr/share/java/postgresql-jdbc.jar
+end-if
+if (outcome != success) of /subsystem=datasources/jdbc-driver=postgresql:read-resource()
+  /subsystem=datasources/jdbc-driver=postgresql:add(driver-module-name="org.postgresql", xa-datasource-class="org.postgresql.xa.PGXADataSource")
+end-if
+/subsystem=datasources/data-source=KeycloakDS:write-attribute(name=connection-url,value=jdbc:postgresql://localhost/keycloak)
+/subsystem=datasources/data-source=KeycloakDS:write-attribute(name=driver-name,value=postgresql)
+/subsystem=datasources/data-source=KeycloakDS:write-attribute(name=user-name,value={{ keycloak_db_user }})
+/subsystem=datasources/data-source=KeycloakDS:write-attribute(name=password,value={{ keycloak_db_password }}
+if (outcome != success) of /core-service=management/security-realm=UndertowRealm:read-resource()
+  /core-service=management/security-realm=UndertowRealm:add()
+  /core-service=management/security-realm=UndertowRealm/server-identity=ssl:add(keystore-path="/etc/keycloak/keycloak.jks", keystore-password=password)
+  /subsystem=undertow/server=default-server/https-listener=https:write-attribute(name=security-realm, value=UndertowRealm)
+end-if

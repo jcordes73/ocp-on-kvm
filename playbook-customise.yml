@@ -1,0 +1,4 @@
+- hosts: bastionhost
+  roles:
+#  - postgresql
+  - keycloak

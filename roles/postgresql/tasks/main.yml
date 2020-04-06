@@ -1,0 +1,41 @@
+- name: Install PostgreSQL
+  yum:
+    name: postgresql-server,postgresql-jdbc
+- name: Check for pgdata directory
+  stat:
+    path: "/var/lib/pgsql/data/base"
+  register: pgdata_stat
+  failed_when: false
+- name: Init DB
+  command: /usr/bin/postgresql-setup --initdb
+  when: pgdata_stat.stat.isdir is not defined or not pgdata_stat.stat.isdir
+- name: Start PostgreSQL
+  service:
+    name: postgresql
+    state: started
+- name: Set password
+  template:
+    src: setup_password.sql.j2
+    dest: /tmp/setup_password.sql
+  become: yes
+  become_user: postgres
+- name: Set password
+  command: psql -f /tmp/setup_password.sql
+  become: yes
+  become_user: postgres
+- name: Set password
+  file:
+    path: /tmp/setup_password.sql
+    state: absent
+- name: Enable password access
+  lineinfile:
+    path: /var/lib/pgsql/data/pg_hba.conf
+    rexgexp: '(.*)all(.*)all(.*)ident'
+    line: '\1all\2all\3md5'
+    backrefs: yes
+  become: yes
+  become_user: postgres
+- name: Start PostgreSQL
+  service:
+    name: postgresql
+    state: restarted
