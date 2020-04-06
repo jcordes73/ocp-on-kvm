@@ -1,4 +1,5 @@
 - hosts: bastionhost
   roles:
 #  - postgresql
-  - keycloak
+#  - keycloak
+  - ocs

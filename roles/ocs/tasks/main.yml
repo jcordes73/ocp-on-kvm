@@ -1,0 +1,114 @@
+- name: Create storage directory
+  file:
+    path: "{{ ocs_storage_dir }}"
+    state: directory
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
+- name: Create disk for Storage Monitor
+  command: "qemu-img create -f qcow2 {{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2 {{ ocs_mon_disk_size }}"
+  args:
+    creates: "{{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2"
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
+- name: Create disk for Storage OSD
+  command: "qemu-img create -f qcow2 {{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2 {{ ocs_osd_disk_size }}"
+  args:
+    creates: "{{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2"
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
+- name: Stop Storage VM's
+  virt:
+    name: "{{ item }}"
+    state: shutdown
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  loop: "{{ groups['storage'] }}"
+- name: Attach Storage Monitor disk to VM
+  command: "virsh attach-disk {{ item }} {{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2 vdb --cache none --config"
+  register: attach_mon_disk_result
+  failed_when:
+  - attach_mon_disk_result.rc != 0
+  - "\"target vdb already exists\" not in attach_mon_disk_result.stderr"
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
+- name: Attach Storage OSD disk to VM
+  command: "virsh attach-disk {{ item }} {{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2 vdc --cache none --config"
+  register: attach_osd_disk_result
+  failed_when:
+  - attach_osd_disk_result.rc != 0
+  - "\"target vdc already exists\" not in attach_osd_disk_result.stderr"
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
+- name: Start Storage VM's
+  virt:
+    name: "{{ item }}"
+    state: running
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  loop: "{{ groups['storage'] }}"
+- name: Create local-storage project
+  command: "{{ ocp_home }}/bin/oc new-project local-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  register: create_local_storage_project_result
+  failed_when:
+  - create_local_storage_project_result.rc != 0
+  - '"already exists" not in create_local_storage_project_result.stderr'
+- name: Annotate local-storage project
+  command: "{{ ocp_home }}/bin/oc annotate project local-storage openshift.io/node-selector='' --overwrite=true --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+- name: Create Local Storage Operator-Group
+  command: "{{ ocp_home }}/bin/oc create -f roles/ocs/files/local-storage-operator-group.yml -n local-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  register: create_local_storage_operator_group_result
+  failed_when:
+  - create_local_storage_operator_group_result.rc != 0
+  - '"already exists" not in create_local_storage_operator_group_result.stderr'
+- name: Create Local Storage Operator-Subscription
+  command: "{{ ocp_home }}/bin/oc create -f roles/ocs/files/local-storage-operator-subscription.yml --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  register: create_local_storage_operator_subscription_result
+  failed_when:
+  - create_local_storage_operator_subscription_result.rc != 0
+  - '"already exists" not in create_local_storage_operator_subscription_result.stderr'
+- name: Create local-storage template
+  template:
+    src: local-storage.yml.j2
+    dest: /tmp/local-storage.yml
+- name: Create local-storage class
+  command: "{{ ocp_home }}/bin/oc create -f /tmp/local-storage.yml -n local-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  register: create_local_storage_class_result
+  failed_when:
+  - create_local_storage_class_result.rc != 0
+  - '"already exists" not in create_local_storage_class_result.stderr'
+- name: Create openshift-storage namespace
+  command: "{{ ocp_home }}/bin/oc create namespace openshift-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  register: create_openshift_storage_namespace_result
+  failed_when:
+  - create_openshift_storage_namespace_result.rc != 0
+  - '"already exists" not in create_openshift_storage_namespace_result.stderr'
+- name: Label operator-storage namespace
+  command: "{{ ocp_home }}/bin/oc label namespace openshift-storage openshift.io/cluster-monitoring=true --overwrite --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+- name: Create Operator-Group
+  command: "{{ ocp_home }}/bin/oc create -f roles/ocs/files/cluster-storage-operator-group.yml -n openshift-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  register: create_cluster_storage_operator_group_result
+  failed_when:
+  - create_cluster_storage_operator_group_result.rc != 0
+  - '"already exists" not in create_cluster_storage_operator_group_result.stderr'
+- name: Create Operator-Subscription
+  command: "{{ ocp_home }}/bin/oc create -f roles/ocs/files/cluster-storage-operator-subscription.yml --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  register: create_cluster_storage_operator_subscription_result
+  failed_when:
+  - create_cluster_storage_operator_subscription_result.rc != 0
+  - '"already exists" not in create_cluster_storage_operator_subscription_result.stderr'
+- name: Label Storage Nodes
+  command: "{{ ocp_home }}/bin/oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} cluster.ocs.openshift.io/openshift-storage=\"\" --overwrite=true --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig" 
+  with_items: "{{ groups['storage'] }}"
+- name: Label Storage Nodes
+  command: "{{ ocp_home }}/bin/oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} topology.rook.io/rack=rack{{ rack_index }} --overwrite=true --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"                         
+  loop: "{{ groups['storage'] }}"
+  loop_control:
+    index_var: rack_index
+- name: Create storage-cluster template
+  template:
+    src: cluster-storage.yml.j2
+    dest: /tmp/cluster-storage.yml
+- name: Create storage-cluster
+  command: "{{ ocp_home }}/bin/oc create -f /tmp/cluster-storage.yml -n openshift-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  register: create_cluster_storage_result
+  failed_when:
+  - create_cluster_storage_result.rc != 0
+  - '"already exists" not in create_cluster_storage_result.stderr'

@@ -1,0 +1,3 @@
+ocs_storage_dir: /var/lib/libvirt/storage
+ocs_mon_disk_size: 10G
+ocs_osd_disk_size: 50G
