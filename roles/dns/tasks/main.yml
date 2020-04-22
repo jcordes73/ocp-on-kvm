@@ -1,6 +1,7 @@
+- shell: "nmcli con mod \"System enp1s0\" ipv4.dns \"{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }} {{ dhcp_public_dns }}\" ipv4.dns-search {{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}"
 - lineinfile:
     path: /etc/hosts
-    line: "{{ hostvars[item]['ansible_host'] }} {{ hostvars[item]['inventory_hostname'] }}.{{ocp_cluster_name}}.{{ocp_cluster_domain_name}} {{ hostvars[item]['inventory_hostname'] }}"
+    line: "{{ hostvars[item]['ansible_host'] }} {{ hostvars[item]['inventory_hostname'] }}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }} {{ hostvars[item]['inventory_hostname'] }}"
     state: present
   with_flattened:
   - "{{ groups['bastionhost'] }}"

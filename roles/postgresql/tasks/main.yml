@@ -23,6 +23,8 @@
   command: psql -f /tmp/setup_password.sql
   become: yes
   become_user: postgres
+  environment:
+    PGPASSWORD: "{{ postgres_password }}"
 - name: Set password
   file:
     path: /tmp/setup_password.sql
@@ -30,7 +32,7 @@
 - name: Enable password access
   lineinfile:
     path: /var/lib/pgsql/data/pg_hba.conf
-    rexgexp: '(.*)all(.*)all(.*)ident'
+    regexp: '(.*)all(.*)all(.*)ident'
     line: '\1all\2all\3md5'
     backrefs: yes
   become: yes

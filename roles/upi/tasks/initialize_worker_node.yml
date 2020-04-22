@@ -22,5 +22,6 @@
   virt:
     name: "{{ item }}"
     state: running
+    autostart: yes
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   loop: "{{ groups['workers'] }}"

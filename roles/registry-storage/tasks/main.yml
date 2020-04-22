@@ -1,0 +1,40 @@
+- file:
+    path: /exports/image-registry
+    state: directory
+    mode: "775"
+    owner: nobody
+    group: nobody
+    recurse: yes
+- lineinfile:
+    path: /etc/exports
+    line: "/exports/image-registry {{ dhcp_subnet }}/24(rw,root_squash)"
+- systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+  - nfs-server
+  - rpcbind
+- shell: "echo 'Y' > /sys/module/nfsd/parameters/nfs4_disable_idmapping"
+- seboolean:
+    name: virt_use_nfs
+    state: yes
+    persistent: yes
+- template:
+    src: persistent-volume.yml.j2
+    dest: /tmp/persistent-volume.yml
+- shell: "oc create -f /tmp/persistent-volume.yml -n openshift-image-registry"
+  register: create_persistent_volume_result
+  failed_when:
+  - create_persistent_volume_result.rc != 0
+  - "\"already exists\" not in create_persistent_volume_result.stderr"
+- template:
+    src: persistent-volume-claim.yml.j2
+    dest: /tmp/persistent-volume-claim.yml
+- shell: "oc create -f /tmp/persistent-volume-claim.yml -n openshift-image-registry"
+  register: create_persistent_volume_claim_result
+  failed_when:
+  - create_persistent_volume_claim_result.rc != 0
+  - "\"already exists\" not in create_persistent_volume_claim_result.stderr"
+- shell: "oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{\"spec\":{\"managementState\": \"Managed\"}}'"
+- shell: "oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{\"spec\":{\"storage\":{\"pvc\":{\"claim\": \"registry-claim\"}}}}'"

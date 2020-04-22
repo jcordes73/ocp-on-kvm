@@ -1,148 +1,148 @@
 - name: Include PostgreSQL variables
   include_vars: ../../postgresql/defaults/main.yml 
-#- name: Create keycloak group
-#  group:
-#    name: keycloak
-#- name: Create keycloak and user
-#  user:
-#    name: keycloak
-#    group: keycloak
-#- name: Download Keycloak
-#  unarchive:
-#    src: https://downloads.jboss.org/keycloak/{{ keycloak_version }}/keycloak-{{ keycloak_version }}.tar.gz
-#    dest: /opt
-#    remote_src: yes
-#    owner: keycloak
-#    group: keycloak
-#- name: Create symlink for Keycloak current version
-#  file:
-#    src: /opt/keycloak-{{ keycloak_version }}
-#    dest: /opt/keycloak
-#    state: link
-#- name: Create etc directory
-#  file:
-#    path: /etc/keycloak
-#    state: directory
-#- name: Copy config file
-#  copy:
-#    src: /opt/keycloak/docs/contrib/scripts/systemd/wildfly.conf
-#    dest: /etc/keycloak/keycloak.conf
-#- name: Copy config file
-#  template:
-#    src: keycloak.properties.j2
-#    dest: /etc/keycloak/keycloak.properties
-#- name: Copy launch script
-#  copy:
-#    src: /opt/keycloak/docs/contrib/scripts/systemd/launch.sh
-#    dest: /opt/keycloak/bin
-#    owner: keycloak
-#    group: keycloak
-#    mode: '755'
-#- name: Change WILDFLY_HOME
-#  lineinfile:
-#    path: /opt/keycloak/bin/launch.sh
-#    regexp: '^(.*)WILDFLY_HOME=.*'
-#    line: '\1WILDFLY_HOME="/opt/keycloak"'
-#    backrefs: yes
-#- name: Add additional configuration
-#  lineinfile:
-#    path: /opt/keycloak/bin/launch.sh
-#    regexp: '^(.*)\$WILDFLY_HOME\/bin\/standalone.sh -c \$2 -b \$3.*'
-#    line: '\1$WILDFLY_HOME/bin/standalone.sh -c $2 -b $3 -P /etc/keycloak/keycloak.properties'
-#    backrefs: yes
-#- set_fact:
-#    cert_subj: "CN={{hostvars[groups['bastionhost'][0]]['inventory_hostname']}}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}, OU={{ ocp_cluster_name }}, O={{ ocp_cluster_domain_name }}, C=DE"
-#    san_dns: "{{hostvars[groups['bastionhost'][0]]['inventory_hostname']}}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}"
-#    san_ip: "{{hostvars[groups['bastionhost'][0]]['ansible_host']}}"
-#- name: Create Self-Signed Certificate
-#  shell:
-#    cmd: "keytool -keystore /etc/keycloak/keycloak.jks -alias keycloak -genkey -keyalg RSA -storepass 'password' -keypass 'password' -dname \"{{ cert_subj }}\" -ext \"SAN=dns:{{ san_dns }},ip:{{ san_ip }}\""
-#    creates: /etc/keycloak/keycloak.jks
-#- name: Create Certificate Signing Request
-#  shell:
-#    cmd: "keytool -certreq -alias keycloak -keystore /etc/keycloak/keycloak.jks -file /etc/keycloak/keycloak.csr  -storepass 'password' -keypass 'password' -ext SAN=dns:{{ san_dns }},ip:{{ san_ip }}"
-#    creates: /etc/keycloak/keycloak.csr
-#- name: Create Keycloak Test CA
-#  shell:
-#    cmd: "openssl x509 -CA /opt/nexus/etc/ssl/caroot.cer -CAkey /opt/nexus/etc/ssl/cakey.pem -CAserial /opt/nexus/etc/ssl/serial.txt -req -in /etc/keycloak/keycloak.csr -out /etc/keycloak/KeycloakTestCA.cer -days 365 -extfile /opt/nexus/etc/ssl/openssl.conf -extensions req_ext -passin pass:password"
-#    creates: /etc/keycloak/KeycloakTestCA.cer
-#- name: Import Test CA into keystore
-#  shell:
-#    cmd: "keytool -import -alias TestCA -file /opt/nexus/etc/ssl/caroot.cer -keystore /etc/keycloak/keycloak.jks -storepass 'password' -keypass 'password' -noprompt"
-#  register: testca_import_result
-#  failed_when:
-#  - testca_import_result.rc != 0
-#  - "\"Certificate not imported, alias <TestCA> already exists\" not in testca_import_result.stdout"
-#- name: Import Keycloak Test CA into keystore
-#  shell:
-#    cmd: "keytool -import -alias keycloak -file /etc/keycloak/KeycloakTestCA.cer -keystore /etc/keycloak/keycloak.jks -storepass 'password' -keypass 'password' -ext SAN=dns:{{ san_dns }},ip:{{ san_ip }}"
-#  register: keycloaktestca_import_result
-#  failed_when:
-#  - keycloaktestca_import_result.rc != 0
-#  - "\"Certificate reply and certificate in keystore are identical\" not in keycloaktestca_import_result.stdout"
-#- name: Copy systemd config
-#  copy:
-#    src: keycloak.service
-#    dest: /etc/systemd/system/keycloak.service
-#- name: Enable HTTP service on port {{keycloak_http_port }} on firewalld
-#  firewalld:
-#    zone: public
-#    port: "{{ keycloak_http_port }}/tcp"
-#    permanent: yes
-#    immediate: yes
-#    state: enabled
-#- name: Enable HTTPS service on port {{keycloak_https_port }} on firewalld
-#  firewalld:
-#    zone: public
-#    port: "{{ keycloak_https_port }}/tcp"
-#    permanent: yes
-#    immediate: yes
-#    state: enabled
-#- name: Enable keycloak service
-#  systemd:
-#    name: keycloak
-#    enabled: yes
-#    state: started
-#- name: Wait for Keycloak to be started
-#  wait_for:
-#    host: localhost
-#    port: "{{ keycloak_http_port }}"
-#    state: started
-#- name: Create Keycloak admin
-#  command: "/opt/keycloak/bin/add-user-keycloak.sh -r master -u {{ keycloak_admin_user }} -p {{ keycloak_admin_password }}"
-#  register: create_admin_result
-#  failed_when:
-#    - create_admin_result.rc != 0
-#    - "\"User with username '{{ keycloak_admin_user }}' already added\" not in create_admin_result.stderr"
-#- name: Create PostgreSQL Keycloak DB
-#  template:
-#    src: keycloak.sql.j2
-#    dest: /tmp/keycloak.sql
-#- name: Create PostgreSQL Keycloak DB
-#  command: "psql -f /tmp/keycloak.sql"
-#  become: yes
-#  become_user: postgres
-#  environment:
-#    PGPASSWORD: "{{ postgres_password }}"
-#- name: Create JBoss CLI script
-#  template:
-#    src: keycloak.cli.j2
-#    dest: /tmp/keycloak.cli
-#- name: Configure PostgreSQL database
-#  command: "/opt/keycloak/bin/jboss-cli.sh -c --file=/tmp/keycloak.cli"
-#- name: Restart keycloak service
-#  systemd:
-#    name: keycloak
-#    state: stopped
-#- name: Restart keycloak service
-#  systemd:
-#    name: keycloak
-#    state: started
-#- name: Wait for Keycloak to be started
-#  wait_for:
-#    host: localhost
-#    port: "{{ keycloak_http_port }}"
-#    state: started
+- name: Create keycloak group
+  group:
+    name: keycloak
+- name: Create keycloak and user
+  user:
+    name: keycloak
+    group: keycloak
+- name: Download Keycloak
+  unarchive:
+    src: https://downloads.jboss.org/keycloak/{{ keycloak_version }}/keycloak-{{ keycloak_version }}.tar.gz
+    dest: /opt
+    remote_src: yes
+    owner: keycloak
+    group: keycloak
+- name: Create symlink for Keycloak current version
+  file:
+    src: /opt/keycloak-{{ keycloak_version }}
+    dest: /opt/keycloak
+    state: link
+- name: Create etc directory
+  file:
+    path: /etc/keycloak
+    state: directory
+- name: Copy config file
+  copy:
+    src: /opt/keycloak/docs/contrib/scripts/systemd/wildfly.conf
+    dest: /etc/keycloak/keycloak.conf
+- name: Copy config file
+  template:
+    src: keycloak.properties.j2
+    dest: /etc/keycloak/keycloak.properties
+- name: Copy launch script
+  copy:
+    src: /opt/keycloak/docs/contrib/scripts/systemd/launch.sh
+    dest: /opt/keycloak/bin
+    owner: keycloak
+    group: keycloak
+    mode: '755'
+- name: Change WILDFLY_HOME
+  lineinfile:
+    path: /opt/keycloak/bin/launch.sh
+    regexp: '^(.*)WILDFLY_HOME=.*'
+    line: '\1WILDFLY_HOME="/opt/keycloak"'
+    backrefs: yes
+- name: Add additional configuration
+  lineinfile:
+    path: /opt/keycloak/bin/launch.sh
+    regexp: '^(.*)\$WILDFLY_HOME\/bin\/standalone.sh -c \$2 -b \$3.*'
+    line: '\1$WILDFLY_HOME/bin/standalone.sh -c $2 -b $3 -P /etc/keycloak/keycloak.properties'
+    backrefs: yes
+- set_fact:
+    cert_subj: "CN={{hostvars[groups['bastionhost'][0]]['inventory_hostname']}}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}, OU={{ ocp_cluster_name }}, O={{ ocp_cluster_domain_name }}, C=DE"
+    san_dns: "{{hostvars[groups['bastionhost'][0]]['inventory_hostname']}}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}"
+    san_ip: "{{hostvars[groups['bastionhost'][0]]['ansible_host']}}"
+- name: Create Self-Signed Certificate
+  shell:
+    cmd: "keytool -keystore /etc/keycloak/keycloak.jks -alias keycloak -genkey -keyalg RSA -storepass 'password' -keypass 'password' -dname \"{{ cert_subj }}\" -ext \"SAN=dns:{{ san_dns }},ip:{{ san_ip }}\""
+    creates: /etc/keycloak/keycloak.jks
+- name: Create Certificate Signing Request
+  shell:
+    cmd: "keytool -certreq -alias keycloak -keystore /etc/keycloak/keycloak.jks -file /etc/keycloak/keycloak.csr  -storepass 'password' -keypass 'password' -ext SAN=dns:{{ san_dns }},ip:{{ san_ip }}"
+    creates: /etc/keycloak/keycloak.csr
+- name: Create Keycloak Test CA
+  shell:
+    cmd: "openssl x509 -CA /opt/nexus/etc/ssl/caroot.cer -CAkey /opt/nexus/etc/ssl/cakey.pem -CAserial /opt/nexus/etc/ssl/serial.txt -req -in /etc/keycloak/keycloak.csr -out /etc/keycloak/KeycloakTestCA.cer -days 365 -extfile /opt/nexus/etc/ssl/openssl.conf -extensions req_ext -passin pass:password"
+    creates: /etc/keycloak/KeycloakTestCA.cer
+- name: Import Test CA into keystore
+  shell:
+    cmd: "keytool -import -alias TestCA -file /opt/nexus/etc/ssl/caroot.cer -keystore /etc/keycloak/keycloak.jks -storepass 'password' -keypass 'password' -noprompt"
+  register: testca_import_result
+  failed_when:
+  - testca_import_result.rc != 0
+  - "\"Certificate not imported, alias <TestCA> already exists\" not in testca_import_result.stdout"
+- name: Import Keycloak Test CA into keystore
+  shell:
+    cmd: "keytool -import -alias keycloak -file /etc/keycloak/KeycloakTestCA.cer -keystore /etc/keycloak/keycloak.jks -storepass 'password' -keypass 'password' -ext SAN=dns:{{ san_dns }},ip:{{ san_ip }}"
+  register: keycloaktestca_import_result
+  failed_when:
+  - keycloaktestca_import_result.rc != 0
+  - "\"Certificate reply and certificate in keystore are identical\" not in keycloaktestca_import_result.stdout"
+- name: Copy systemd config
+  copy:
+    src: keycloak.service
+    dest: /etc/systemd/system/keycloak.service
+- name: Enable HTTP service on port {{keycloak_http_port }} on firewalld
+  firewalld:
+    zone: public
+    port: "{{ keycloak_http_port }}/tcp"
+    permanent: yes
+    immediate: yes
+    state: enabled
+- name: Enable HTTPS service on port {{keycloak_https_port }} on firewalld
+  firewalld:
+    zone: public
+    port: "{{ keycloak_https_port }}/tcp"
+    permanent: yes
+    immediate: yes
+    state: enabled
+- name: Enable keycloak service
+  systemd:
+    name: keycloak
+    enabled: yes
+    state: started
+- name: Wait for Keycloak to be started
+  wait_for:
+    host: localhost
+    port: "{{ keycloak_http_port }}"
+    state: started
+- name: Create Keycloak admin
+  command: "/opt/keycloak/bin/add-user-keycloak.sh -r master -u {{ keycloak_admin_user }} -p {{ keycloak_admin_password }}"
+  register: create_admin_result
+  failed_when:
+    - create_admin_result.rc != 0
+    - "\"User with username '{{ keycloak_admin_user }}' already added\" not in create_admin_result.stderr"
+- name: Create PostgreSQL Keycloak DB
+  template:
+    src: keycloak.sql.j2
+    dest: /tmp/keycloak.sql
+- name: Create PostgreSQL Keycloak DB
+  command: "psql -f /tmp/keycloak.sql"
+  become: yes
+  become_user: postgres
+  environment:
+    PGPASSWORD: "{{ postgres_password }}"
+- name: Create JBoss CLI script
+  template:
+    src: keycloak.cli.j2
+    dest: /tmp/keycloak.cli
+- name: Configure PostgreSQL database
+  command: "/opt/keycloak/bin/jboss-cli.sh -c --file=/tmp/keycloak.cli"
+- name: Restart keycloak service
+  systemd:
+    name: keycloak
+    state: stopped
+- name: Restart keycloak service
+  systemd:
+    name: keycloak
+    state: started
+- name: Wait for Keycloak to be started
+  wait_for:
+    host: localhost
+    port: "{{ keycloak_http_port }}"
+    state: started
 - name: Get Keycloak credentials
   command: "/opt/keycloak/bin/kcadm.sh config credentials --server http://{{ hostvars[groups['bastionhost'][0]]['inventory_hostname'] }}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}:{{ keycloak_http_port }}/auth --realm master --user {{ keycloak_admin_user }} --client admin-cli  --password {{ keycloak_admin_password }}"
 - name: Create OpenShift realm
@@ -166,15 +166,25 @@
 - set_fact:
    client_secret: "{{ client_secret_result.stdout }}"
 - name: Create OpenShift Secret
-  command: "{{ ocp_home }}/bin/oc create secret generic idp-secret --from-literal=clientSecret={{ client_secret }} -n openshift-config --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc create secret generic idp-secret --from-literal=clientSecret={{ client_secret }} -n openshift-config"
   ignore_errors: yes
 - name: Create OpenShift Configmap
-  command: "{{ ocp_home }}/bin/oc create configmap ca-config-map --from-file=ca.crt=/opt/nexus/etc/ssl/caroot.cer -n openshift-config --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc create configmap ca-config-map --from-file=ca.crt=/opt/nexus/etc/ssl/caroot.cer -n openshift-config"
   ignore_errors: yes
 - name: Create OpenShift OAuth CRD
   template:
     src: openshift-oidc-cr.yaml.j2
     dest: /tmp/openshift-oidc-cr.yaml
 - name: Apply OpenShift OAuth CRD
-  command: "{{ ocp_home }}/bin/oc apply -f /tmp/openshift-oidc-cr.yaml --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc apply -f /tmp/openshift-oidc-cr.yaml"
   ignore_errors: yes
+- name: Create cluster-admin user
+  command: "/opt/keycloak/bin/kcadm.sh create users -r openshift -s username=admin -s enabled=true"
+  register: create_cluster_admin_result
+  failed_when:
+  - create_cluster_admin_result.rc != 0
+  - "\"User exists with same username\" not in create_cluster_admin_result.stderr"
+- name: Create temporary password for cluster-admin user
+  command: "/opt/keycloak/bin/kcadm.sh set-password -r openshift --username admin --new-password openshift --temporary"
+- name: Assign cluster-admin role to cluster-admin user
+  command: "oc adm policy add-cluster-role-to-user cluster-admin admin"

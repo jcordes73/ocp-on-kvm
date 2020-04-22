@@ -8,3 +8,4 @@
     dest: create_bridge.sh
 - name: execute bridge creation script
   command: sh create_bridge.sh
+  ignore_errors: yes

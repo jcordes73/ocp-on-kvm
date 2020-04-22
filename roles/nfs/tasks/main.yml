@@ -4,26 +4,44 @@
       - nfs-utils
       - rpcbind
     state: present
-- name: Enable NFS service on firewalld
+- name: Enable NFS Services on firewalld
   firewalld:
-    service: nfs
+    service: "{{ item }}"
     permanent: yes
     state: enabled
-- name: Change permission to nobody
-  file:
-    path: /exports/container-storage
-    owner: nobody
-    group: nobody
-    state: directory
-- name: Copy /etc/exports
-  template:
-    src: nfs-export.j2
-    dest: /etc/exports
+  loop:
+  - nfs
+  - nfs3
+  - mountd
+  - rpc-bind
 - name: Enable and start NFS services
   systemd:
     name: "{{ item }}"
     state: started
-    enabled: yes
   with_items:
   - nfs-server
   - rpcbind
+- name: Create a volume group on top of /dev/sda1
+  lvg:
+    vg: vg_nfs
+    pvs: /dev/sda1
+    pesize: 470G
+- name: Create a logical volume to consume all remaining space in the volume group
+  lvol:
+    vg: vg_nfs
+    lv: lv_nfs
+    size: +100%FREE
+- name: Create XFS
+  filesystem:
+    dev: /dev/vg_nfs/lv_nfs
+    fstype: xfs
+- name:
+  file:
+    path: /exports
+    state: directory
+- name: Mount registry storage
+  mount:
+    src: /dev/mapper/vg_nfs-lv_nfs
+    path: /exports
+    fstype: xfs
+    state: mounted

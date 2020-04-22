@@ -5,15 +5,25 @@
     password: "{{ rhn_password }}"
     auto_attach: true
   when: systemid is not defined
-  ignore_errors: yes
+  register: subscription_result
+  failed_when:
+  - subscription_result.failed
+  delay: 10
+  retries: 6
 - redhat_subscription:
     state: present
     username: "{{ rhn_user }}"
     password: "{{ rhn_password }}"
     consumer_id: "{{ systemid }}"
     auto_attach: true
-  ignore_errors: yes
   when: systemid is defined
+  register: subscription_result
+  failed_when:
+  - subscription_result.failed
+  delay: 10
+  retries: 6
+- debug:
+    msg: "{{ subscription_result }}"
 - shell:
     cmd: subscription-manager refresh
 - yum:

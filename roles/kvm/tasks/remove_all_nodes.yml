@@ -1,19 +1,63 @@
-- shell:
-     cmd: |
-       virsh destroy {{ item }}
-       virsh undefine {{ item }} --nvram
-       rm -f /var/lib/libvirt/images/{{ item }}.qcow2
+- virt:
+    name: "{{ item }}"
+    command: destroy
+  register: virt_destroy
+  failed_when:
+  - virt_destroy.failed
+  - virt_destroy.msg is not match("virtual machine .* not found") and virt_destroy.msg is not match(".*domain is not running")
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   with_flattened:
   - "{{ groups['bootstrap'] }}"
   - "{{ groups['workers'] }}"
   - "{{ groups['masters'] }}"
   when: '"bastionhost" in group_names'
-- shell:
-     cmd: |
-       virsh destroy {{ item }}
-       virsh undefine {{ item }} --nvram
-       rm -f /var/lib/libvirt/images/{{ item }}.qcow2
+- virt:
+    name: "{{ item }}"
+    command: undefine
+  register: virt_destroy
+  failed_when:
+  - virt_destroy.failed
+  - virt_destroy.msg is not match("virtual machine .* not found")
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_flattened:
+  - "{{ groups['bootstrap'] }}"
+  - "{{ groups['workers'] }}"
+  - "{{ groups['masters'] }}"
+  when: '"bastionhost" in group_names'
+- file:
+    path: "/var/lib/libvirt/images/{{ item }}.qcow2"
+    state: absent
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_flattened:
+  - "{{ groups['bootstrap'] }}"
+  - "{{ groups['workers'] }}"
+  - "{{ groups['masters'] }}"
+  when: '"bastionhost" in group_names'
+- virt:
+    name: "{{ item }}"
+    command: destroy
+  register: virt_destroy
+  failed_when:
+  - virt_destroy.failed
+  - virt_destroy.msg is not match("virtual machine .* not found") and virt_destroy.msg is not match(".*domain is not running")
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_flattened:
+  - "{{ groups['all'] }}"
+  when: '"kvm" in group_names and hostvars[item].kvm_host is defined and hostvars[item].kvm_host == inventory_hostname'
+- virt:
+    name: "{{ item }}"
+    command: undefine
+  register: virt_destroy
+  failed_when:
+  - virt_destroy.failed
+  - virt_destroy.msg is not match("virtual machine .* not found") and virt_destroy.msg is not match(".*domain is not running")
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_flattened:
+  - "{{ groups['all'] }}"
+  when: '"kvm" in group_names and hostvars[item].kvm_host is defined and hostvars[item].kvm_host == inventory_hostname'
+- file:
+    path: "/var/lib/libvirt/images/{{ item }}.qcow2"
+    state: absent
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   with_flattened:
   - "{{ groups['all'] }}"

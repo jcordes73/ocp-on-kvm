@@ -4,19 +4,20 @@ kvm
 masters
 workers
 bootstrap
+storage
 
 [ocp:vars]
 ansible_python_interpreter=/usr/libexec/platform-python
 host_key_checking = False
 ansible_ssh_private_key_file=~/.ssh/id_ocplabs
 ansible_ssh_user=root
+
 ocp_home=/root/ocp4
-ocp_release=4.3.3
+ocp_release=4.3.11
 ocp_release_name=ocp-release
-ocp_type=bare-metal
+ocp_type=typebare-metal
 ocp_cluster_name=ocp4
 ocp_cluster_domain_name=ocplabs.com
-rhcos_release=4.3.0
 
 ocp_install_type=disconnected
 ocp_network_cluster_cidr="<ocp_network_cluster_cidr>"
@@ -34,16 +35,15 @@ dhcp_public_dns="<dhcp-public-dns>"
 
 kvm_install_type=pxe
 kvm_interface=<kvm_interface>
-kvm_boot_device=sda
-kvm_image_device=sdb
+kvm_boot_type=wake-on-lan
+kvm_boot_device=<boot_device>
+kvm_image_device=<image-device>
 kvm_network_mode=bridge
 
 squid_install=True
 
-nexus_version=3.20.1-01
-
 [all]
-bastion ansible_host=<ip> ethernet="<mac>"
+bastion ansible_host=<ip> ethernet="<mac>" ansible_connection=local
 kvm01 ansible_host=<ip> ethernet="<mac>" systemid=<system-id>
 kvm02 ansible_host=<ip> ethernet="<mac>" systemid=<system-id> 
 kvm03 ansible_host=<ip> ethernet="<mac>" systemid=<system-id>
@@ -87,6 +87,9 @@ worker08
 worker09
 
 [storage]
+worker04
+worker06
+worker09
 
 [bootstrap]
 worker09

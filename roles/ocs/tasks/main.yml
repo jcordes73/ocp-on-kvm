@@ -4,10 +4,28 @@
     state: directory
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   with_items: "{{ groups['storage'] }}"
+- name: Stop Storage VM's
+  virt:
+    name: "{{ item }}"
+    state: shutdown
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  loop: "{{ groups['storage'] }}"
+- name: Remove disks for Storage Monitor
+  file:
+    path: "{{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2"
+    state: absent
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
 - name: Create disk for Storage Monitor
   command: "qemu-img create -f qcow2 {{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2 {{ ocs_mon_disk_size }}"
   args:
     creates: "{{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2"
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
+- name: Remove disks for Storage OSD
+  file:
+    path: "{{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2"
+    state: absent
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   with_items: "{{ groups['storage'] }}"
 - name: Create disk for Storage OSD
@@ -16,12 +34,6 @@
     creates: "{{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2"
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   with_items: "{{ groups['storage'] }}"
-- name: Stop Storage VM's
-  virt:
-    name: "{{ item }}"
-    state: shutdown
-  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
-  loop: "{{ groups['storage'] }}"
 - name: Attach Storage Monitor disk to VM
   command: "virsh attach-disk {{ item }} {{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2 vdb --cache none --config"
   register: attach_mon_disk_result
@@ -44,71 +56,97 @@
     state: running
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   loop: "{{ groups['storage'] }}"
+- name: Label Storage Nodes
+  command: "oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} cluster.ocs.openshift.io/openshift-storage=\"\" --overwrite=true"
+  with_items: "{{ groups['storage'] }}"
+- name: Label Storage Nodes
+  command: "oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} topology.rook.io/rack=rack{{ rack_index }} --overwrite=true"
+  loop: "{{ groups['storage'] }}"
+  loop_control:
+    index_var: rack_index
+- name: Wait for storage nodes to be available
+  shell: "oc get nodes -l cluster.ocs.openshift.io/openshift-storage= | grep Ready | wc -l"
+  register: storage_nodes_available_result
+  until: "{{ storage_nodes_available_result.stdout | int == groups['storage'] | length }}"
+  retries: 30
+  delay: 10
 - name: Create local-storage project
-  command: "{{ ocp_home }}/bin/oc new-project local-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc new-project local-storage"
   register: create_local_storage_project_result
   failed_when:
   - create_local_storage_project_result.rc != 0
   - '"already exists" not in create_local_storage_project_result.stderr'
 - name: Annotate local-storage project
-  command: "{{ ocp_home }}/bin/oc annotate project local-storage openshift.io/node-selector='' --overwrite=true --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc annotate project local-storage openshift.io/node-selector='' --overwrite=true"
 - name: Create Local Storage Operator-Group
-  command: "{{ ocp_home }}/bin/oc create -f roles/ocs/files/local-storage-operator-group.yml -n local-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc create -f roles/ocs/files/local-storage-operator-group.yml -n local-storage"
   register: create_local_storage_operator_group_result
   failed_when:
   - create_local_storage_operator_group_result.rc != 0
   - '"already exists" not in create_local_storage_operator_group_result.stderr'
 - name: Create Local Storage Operator-Subscription
-  command: "{{ ocp_home }}/bin/oc create -f roles/ocs/files/local-storage-operator-subscription.yml --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc create -f roles/ocs/files/local-storage-operator-subscription.yml"
   register: create_local_storage_operator_subscription_result
   failed_when:
   - create_local_storage_operator_subscription_result.rc != 0
   - '"already exists" not in create_local_storage_operator_subscription_result.stderr'
+- name: Wait for Local Storage Operator Subscription to be available
+  shell: "oc get sub local-storage-operator -o json -n local-storage | jq '.status.state' -r"
+  register: local_storage_operator_subscription_state_result
+  until: local_storage_operator_subscription_state_result.stdout is in ["AtLatestKnown","UpgradeAvailable"]
+  retries: 30
+  delay: 10
 - name: Create local-storage template
   template:
     src: local-storage.yml.j2
     dest: /tmp/local-storage.yml
 - name: Create local-storage class
-  command: "{{ ocp_home }}/bin/oc create -f /tmp/local-storage.yml -n local-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc create -f /tmp/local-storage.yml -n local-storage"
   register: create_local_storage_class_result
   failed_when:
   - create_local_storage_class_result.rc != 0
   - '"already exists" not in create_local_storage_class_result.stderr'
 - name: Create openshift-storage namespace
-  command: "{{ ocp_home }}/bin/oc create namespace openshift-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc create namespace openshift-storage"
   register: create_openshift_storage_namespace_result
   failed_when:
   - create_openshift_storage_namespace_result.rc != 0
   - '"already exists" not in create_openshift_storage_namespace_result.stderr'
 - name: Label operator-storage namespace
-  command: "{{ ocp_home }}/bin/oc label namespace openshift-storage openshift.io/cluster-monitoring=true --overwrite --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc label namespace openshift-storage openshift.io/cluster-monitoring=true --overwrite"
 - name: Create Operator-Group
-  command: "{{ ocp_home }}/bin/oc create -f roles/ocs/files/cluster-storage-operator-group.yml -n openshift-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc create -f roles/ocs/files/cluster-storage-operator-group.yml -n openshift-storage"
   register: create_cluster_storage_operator_group_result
   failed_when:
   - create_cluster_storage_operator_group_result.rc != 0
   - '"already exists" not in create_cluster_storage_operator_group_result.stderr'
 - name: Create Operator-Subscription
-  command: "{{ ocp_home }}/bin/oc create -f roles/ocs/files/cluster-storage-operator-subscription.yml --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc create -f roles/ocs/files/cluster-storage-operator-subscription.yml"
   register: create_cluster_storage_operator_subscription_result
   failed_when:
   - create_cluster_storage_operator_subscription_result.rc != 0
   - '"already exists" not in create_cluster_storage_operator_subscription_result.stderr'
-- name: Label Storage Nodes
-  command: "{{ ocp_home }}/bin/oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} cluster.ocs.openshift.io/openshift-storage=\"\" --overwrite=true --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig" 
-  with_items: "{{ groups['storage'] }}"
-- name: Label Storage Nodes
-  command: "{{ ocp_home }}/bin/oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} topology.rook.io/rack=rack{{ rack_index }} --overwrite=true --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"                         
-  loop: "{{ groups['storage'] }}"
-  loop_control:
-    index_var: rack_index
+- name: Wait for Storage Operator Subscription to be available
+  shell: "oc get sub ocs-operator -o json -n openshift-storage | jq '.status.state' -r"
+  register: cluster_storage_operator_subscription_state_result
+  until: cluster_storage_operator_subscription_state_result.stdout is in ["UpgradeAvailable","AtLatestKnown"]
+  retries: 30
+  delay: 10
 - name: Create storage-cluster template
   template:
     src: cluster-storage.yml.j2
     dest: /tmp/cluster-storage.yml
 - name: Create storage-cluster
-  command: "{{ ocp_home }}/bin/oc create -f /tmp/cluster-storage.yml -n openshift-storage --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+  command: "oc create -f /tmp/cluster-storage.yml -n openshift-storage"
   register: create_cluster_storage_result
   failed_when:
   - create_cluster_storage_result.rc != 0
   - '"already exists" not in create_cluster_storage_result.stderr'
+- name: Wait for Rook Ceph to be available
+  shell: "oc get deployment.apps/rook-ceph-operator -n openshift-storage -o json | jq '.status.readyReplicas'"
+  register: rook_ceph_deployment_replicas_result
+  until: "(rook_ceph_deployment_replicas_result.stdout | int) >= 1"
+  retries: 30
+  delay: 10
+- name: Make Ceph RBD the default storage-class
+  command: "oc patch storageclass ocs-storagecluster-ceph-rbd -p '{\"metadata\": {\"annotations\": {\"storageclass.kubernetes.io/is-default-class\": \"true\"}}}'"

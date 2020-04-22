@@ -31,5 +31,3 @@
   import_tasks: accept_node_certificates.yml
 - name: Wait for Installation completion
   import_tasks: wait_for_installation_completion.yml
-- name: Change registry storage to NFS
-  import_tasks: change_registry_storage.yml

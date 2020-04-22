@@ -3,23 +3,17 @@
 - systemd:
     name: libvirtd
     state: stopped
-- mount:
-    path: /var/lib/libvirt/images
-    state: unmounted
-  ignore_errors: yes
-  retries: 3
 - lvol:
     vg: vg_kvm_xfs
     lv: kvm_xfs_db
+    force: yes 
     state: absent
-    force: yes
 - lvg:
     vg: vg_kvm_xfs
     state: absent
-    force: true
 - parted:
     device: "/dev/{{ kvm_image_device }}"
-    number: '{{ item.num }}'
+    number: 1
     state: absent
   loop: '{{ image_share_info.partitions }}'
 - parted:
