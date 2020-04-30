@@ -1,0 +1,91 @@
+- name: Get PVs using Ceph
+  shell: "oc get pv | grep -e local-sc-mon -e local-sc-osd | awk '{ print $1}'"
+  register: ceph_pvs
+- name: Get PVCs using Ceph
+  shell: "oc get pv -n openshift-storage | grep -e local-sc-mon -e local-sc-osd | awk '{ print $1}'"
+  register: ceph_pvcs
+- name: Delete Storage-Cluster
+  command: "oc delete storagecluster -n openshift-storage --all --wait=true  --timeout=5m"
+  register: delete_storage_cluster_result
+  failed_when:
+  - delete_storage_cluster_result.rc != 0
+  - delete_storage_cluster_result.stderr is not match(".*the server doesn't have a resource type.*")
+- name: Delete Storage Project
+  command: "oc delete project openshift-storage"
+  register: delete_cluster_storage_project_result
+  until: delete_cluster_storage_project_result.stderr is match(".*namespaces .* not found.*")
+  delay: 10
+  retries: 30 
+  failed_when:
+  - delete_cluster_storage_project_result.rc != 0
+  - delete_cluster_storage_project_result.stderr is not match(".*namespaces .* not found.*")
+- name: Get storage nodes
+  shell: "oc get nodes -l cluster.ocs.openshift.io/openshift-storage= --no-headers | awk '{print $1}'"
+  register: storage_nodes
+- name: Remove rook directory on the Nodes
+  file:
+    path: /var/lib/rook
+    state: absent
+  delegate_to: "{{ item }}"
+  with_flattened:
+  - "{{ groups['storage'] }}"
+  vars:
+    ansible_ssh_user: core
+    ansible_user: root
+    ansible_become: yes
+- name: Delete storageclass for CephRDB and CephFS
+  command: "oc delete storageclass {{ item }} --wait=true --timeout=5m"
+  register: delete_storageclass_result
+  with_items:
+  - ocs-storagecluster-ceph-rbd
+  - ocs-storagecluster-cephfs
+  failed_when:
+  - delete_storageclass_result.rc != 0
+  - delete_storageclass_result.stderr is not match(".*storageclasses.storage.k8s.io .* not found.*") 
+- name: Unlabel storage nodes
+  command: "oc label node {{ item }}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }} topology.rook.io/rack-"
+  with_items:
+  - "{{ groups['storage'] }}"
+- name: Remove Storage Cluster CRDs
+  command: "oc delete crd backingstores.noobaa.io bucketclasses.noobaa.io cephblockpools.ceph.rook.io cephclusters.ceph.rook.io cephfilesystems.ceph.rook.io cephnfses.ceph.rook.io cephobjectstores.ceph.rook.io cephobjectstoreusers.ceph.rook.io noobaas.noobaa.io ocsinitializations.ocs.openshift.io  storageclusterinitializations.ocs.openshift.io storageclusters.ocs.openshift.io  --wait=true --timeout=5m"
+  register: remove_storage_cluster_crds_result
+  failed_when:
+  - remove_storage_cluster_crds_result.rc != 0
+  - remove_storage_cluster_crds_result.stderr is not match(".*customresourcedefinitions.apiextensions.k8s.io .* not found.*")
+- name: Delete all local volumes
+  command: "oc delete localvolume --all --all-namespaces"
+  register: delete_localvolume_result
+  failed_when:
+  - delete_localvolume_result.rc != 0
+  - delete_localvolume_result.stderr is not match(".*the server doesn't have a resource type.*")
+- name: Delete local storage project
+  command: "oc delete project local-storage"
+  register: delete_local_storage_project_result
+  until: delete_local_storage_project_result.stderr is match(".*namespaces .* not found.*")
+  delay: 10
+  retries: 30
+  failed_when:
+  - delete_local_storage_project_result.rc != 0
+  - delete_local_storage_project_result.stderr is not match(".*namespaces .* not found.*")
+- name: Delete storageclass for local-storage
+  command: "oc delete storageclass {{ item }} --wait=true --timeout=5m"
+  register: delete_storageclass_result
+  with_items:
+  - local-sc-mon
+  - local-sc-osd
+  failed_when:
+  - delete_storageclass_result.rc != 0
+  - delete_storageclass_result.stderr is not match(".*storageclasses.storage.k8s.io .* not found.*")
+- name: Remove Local Storage CRDs
+  command: "oc delete crd localvolumes.local.storage.openshift.io --wait=true --timeout=5m"
+  register: remove_local_storage_crds_result
+  failed_when:
+  - remove_local_storage_crds_result.rc != 0
+  - remove_local_storage_crds_result.stderr is not match(".*customresourcedefinitions.apiextensions.k8s.io .* not found.*")
+- name: Remove PVs using Ceph
+  shell: "oc delete pv {{ item }} --wait=true --timeout=5m"
+  with_items: "{{ ceph_pvs.stdout_lines }}"
+  register: delete_pv_result
+  failed_when:
+  - delete_pv_result.rc != 0
+  - delete_pv_result.stderr is not match(".*persistentvolumes .* not found.*")

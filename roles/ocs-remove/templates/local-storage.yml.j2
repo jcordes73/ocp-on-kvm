@@ -11,7 +11,7 @@ spec:
           operator: In
           values:
 {% for host in groups['storage'] %}
-          - {{ hostvars[host]['inventory_hostname'] }}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}
+          - server {{ hostvars[host]['inventory_hostname'] }}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}
 {% endfor %}
   storageClassDevices:
     - storageClassName: "local-sc-mon"
@@ -33,7 +33,7 @@ spec:
           operator: In
           values:
 {% for host in groups['storage'] %}
-          - {{ hostvars[host]['inventory_hostname'] }}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}
+          - server {{ hostvars[host]['inventory_hostname'] }}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}
 {% endfor %}
   storageClassDevices:
     - storageClassName: "local-sc-osd"

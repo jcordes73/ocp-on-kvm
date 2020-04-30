@@ -1,0 +1,37 @@
+- shell: "lvdisplay --column --noheadings | awk '{print $1,$2}'"
+  register: lv_result
+  vars:
+    ansible_ssh_user: core
+    ansible_user: root
+    ansible_become: yes
+- shell: "lvremove {{ item.split()[1] }} {{ item.split()[0] }}"
+  with_items: "{{ lv_result.stdout_lines }}" 
+  vars:
+    ansible_ssh_user: core
+    ansible_user: root
+    ansible_become: yes
+  register: lvremove_result
+  failed_when:
+  - lvremove_result.rc != 0
+  - lvremove_result.stdout is not match(".*Logical volume .* successfully removed.*")
+- shell: "vgdisplay --column --noheadings | awk '{print $1}'"
+  register: vg_result
+  vars:
+    ansible_ssh_user: core
+    ansible_user: root
+    ansible_become: yes
+- shell: "vgremove {{ item }}"
+  with_items: "{{ vg_result.stdout_lines }}"
+  vars:
+    ansible_ssh_user: core
+    ansible_user: root
+    ansible_become: yes
+- shell: "pvremove /dev/vdc"
+  register: pvremove_result
+  vars:
+    ansible_ssh_user: core
+    ansible_user: root
+    ansible_become: yes
+  failed_when:
+  - pvremove_result.rc != 0
+  - pvremove_result.stderr is not match(".*No PV found on device.*")

@@ -1,5 +1,5 @@
 # Version and type
-ocp_release: 4.3.13
+ocp_release: 4.3.18
 ocp_type: bare-metal
 # Network
 ocp_network_cluster_cidr: "10.128.0.0/14"
@@ -25,5 +25,5 @@ os_keymap: de-de
 download_initramfs: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.3/4.3.8/rhcos-4.3.8-x86_64-installer-initramfs.x86_64.img
 download_kernel: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.3/4.3.8/rhcos-4.3.8-x86_64-installer-kernel-x86_64
 download_image_metal: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.3/4.3.8/rhcos-4.3.8-x86_64-metal.x86_64.raw.gz
-download_client: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.3.13/openshift-client-linux.tar.gz
-download_installer: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.3.13/openshift-install-linux.tar.gz
+download_client: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.3.18/openshift-client-linux.tar.gz
+download_installer: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.3.18/openshift-install-linux.tar.gz

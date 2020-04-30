@@ -3,8 +3,8 @@
     KUBECONFIG: "{{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
     PATH: "{{ ocp_home }}/bin:{{ ansible_env.PATH }}"
   roles:
-#  - postgresql
-#  - keycloak
-#  - registry-storage
-  - infra-node
-#  - ocs
+  - ocs-remove
+- hosts: storage
+  gather_facts: false
+  roles:
+  - ocs-local-storage-clean

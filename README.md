@@ -67,6 +67,12 @@ for
 - OpenShift Container Storage (OCS)
 - Container Registry Storage (using OCS)
 
+## Remove OCS
+
+Run the following playbook to remove the OCS installation
+
+	ansible-playbook -vvv -i inventory playbook-remove-ocs.yml
+
 ## License
 
 OpenShift is licensed under the Apache Public License 2.0. The source code for this

@@ -1,0 +1,7 @@
+- name: Label infra-nodes
+  command: "oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} node-role.kubernetes.io/infra=\"\" --overwrite=true"
+  with_items: "{{ groups['infra'] }}"
+- name: Create configmap
+  command: "oc create -f configmap.yml -n openshift-monitoring"
+  args:
+    chdir: roles/infra-node/files

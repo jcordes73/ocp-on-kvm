@@ -10,26 +10,14 @@
     state: shutdown
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   loop: "{{ groups['storage'] }}"
-- name: Remove disks for Storage Monitor
-  file:
-    path: "{{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2"
-    state: absent
-  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
-  with_items: "{{ groups['storage'] }}"
 - name: Create disk for Storage Monitor
-  command: "qemu-img create -f qcow2 {{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2 {{ ocs_mon_disk_size }}"
+  command: "qemu-img create -f qcow2 -o preallocation=full {{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2 {{ ocs_mon_disk_size }}"
   args:
     creates: "{{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2"
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   with_items: "{{ groups['storage'] }}"
-- name: Remove disks for Storage OSD
-  file:
-    path: "{{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2"
-    state: absent
-  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
-  with_items: "{{ groups['storage'] }}"
 - name: Create disk for Storage OSD
-  command: "qemu-img create -f qcow2 {{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2 {{ ocs_osd_disk_size }}"
+  command: "qemu-img create -f qcow2 -o preallocation=full {{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2 {{ ocs_osd_disk_size }}"
   args:
     creates: "{{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2"
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
@@ -64,6 +52,9 @@
   loop: "{{ groups['storage'] }}"
   loop_control:
     index_var: rack_index
+#- name: Dedicated Storage Nodes
+#  command: "oc adm taint nodes {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} node.ocs.openshift.io/storage=true:NoSchedule --overwrite=true"
+#  with_items: "{{ groups['storage'] }}"
 - name: Wait for storage nodes to be available
   shell: "oc get nodes -l cluster.ocs.openshift.io/openshift-storage= | grep Ready | wc -l"
   register: storage_nodes_available_result
@@ -96,6 +87,12 @@
   until: local_storage_operator_subscription_state_result.stdout is in ["AtLatestKnown","UpgradeAvailable"]
   retries: 30
   delay: 10
+- name: Wait for Local Storage Operator to be available
+  shell: "oc get deployment.apps/local-storage-operator -n local-storage -o json | jq '.status.readyReplicas'"
+  register: local_storage_operator_deployment_replicas_result
+  until: "(local_storage_operator_deployment_replicas_result.stdout | int) >= 1"
+  retries: 30
+  delay: 10
 - name: Create local-storage template
   template:
     src: local-storage.yml.j2
@@ -106,6 +103,17 @@
   failed_when:
   - create_local_storage_class_result.rc != 0
   - '"already exists" not in create_local_storage_class_result.stderr'
+- name: Wait for Local Storage Daemon Sets to be available
+  shell: "oc get daemonset.apps/{{ item }} -n local-storage -o json | jq '.status.numberReady'"
+  register: local_storage_daemonsets_deployment_replicas_result
+  with_items:
+  - local-disks-mon-local-diskmaker
+  - local-disks-mon-local-provisioner
+  - local-disks-osd-local-diskmaker
+  - local-disks-osd-local-provisioner
+  until: "(local_storage_daemonsets_deployment_replicas_result.stdout | int) >= 3"
+  retries: 30
+  delay: 10
 - name: Create openshift-storage namespace
   command: "oc create namespace openshift-storage"
   register: create_openshift_storage_namespace_result
@@ -130,6 +138,30 @@
   shell: "oc get sub ocs-operator -o json -n openshift-storage | jq '.status.state' -r"
   register: cluster_storage_operator_subscription_state_result
   until: cluster_storage_operator_subscription_state_result.stdout is in ["UpgradeAvailable","AtLatestKnown"]
+  retries: 120
+  delay: 10
+- name: Wait for OCS Operator to be available
+  shell: "oc get deployment.apps/ocs-operator -n openshift-storage -o json | jq '.status.readyReplicas'"
+  register: ocs_deployment_replicas_result
+  until: "(ocs_deployment_replicas_result.stdout | int) >= 1"
+  retries: 30
+  delay: 10
+- name: Wait for Rook Ceph Operator to be available
+  shell: "oc get deployment.apps/rook-ceph-operator -n openshift-storage -o json | jq '.status.readyReplicas'"
+  register: rook_ceph_deployment_replicas_result
+  until: "(rook_ceph_deployment_replicas_result.stdout | int) >= 1"
+  retries: 30
+  delay: 10
+- name: Wait for Noobaa Operator to be available
+  shell: "oc get deployment.apps/noobaa-operator -n openshift-storage -o json | jq '.status.readyReplicas'"
+  register: noobaa_deployment_replicas_result
+  until: "(noobaa_deployment_replicas_result.stdout | int) >= 1"
+  retries: 30
+  delay: 10
+- name: Wait for Bucket Operator to be available
+  shell: "oc get deployment.apps/lib-bucket-provisioner -n openshift-storage -o json | jq '.status.readyReplicas'"
+  register: bucket_deployment_replicas_result
+  until: "(bucket_deployment_replicas_result.stdout | int) >= 1"
   retries: 30
   delay: 10
 - name: Create storage-cluster template
@@ -142,10 +174,10 @@
   failed_when:
   - create_cluster_storage_result.rc != 0
   - '"already exists" not in create_cluster_storage_result.stderr'
-- name: Wait for Rook Ceph to be available
-  shell: "oc get deployment.apps/rook-ceph-operator -n openshift-storage -o json | jq '.status.readyReplicas'"
-  register: rook_ceph_deployment_replicas_result
-  until: "(rook_ceph_deployment_replicas_result.stdout | int) >= 1"
+- name: Wait for OCS Operator to be available
+  shell: "oc get deployment.apps/ocs-operator -n openshift-storage -o json | jq '.status.readyReplicas'"
+  register: ocs_deployment_replicas_result
+  until: "(ocs_deployment_replicas_result.stdout | int) >= 1"
   retries: 30
   delay: 10
 - name: Make Ceph RBD the default storage-class

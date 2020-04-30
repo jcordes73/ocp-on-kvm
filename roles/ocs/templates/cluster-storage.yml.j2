@@ -9,34 +9,57 @@ spec:
     spec:    
       storageClassName: local-sc-mon    
       accessModes:    
-      - ReadWriteOnce    
+      - ReadWriteOnce
+      volumeMode: Filesystem
       resources:    
         requests:    
           storage: {{ ocs_mon_disk_size }}    
   resources:      
     mon:      
-      requests: {}
-      limits: {}
+      requests:
+        cpu: 0.25
+        memory: 1Gi
+      limits:
+        cpu: 0.5
+        memory: 1Gi
     mds:
-      requests: {}
-      limits: {}
-    rgw:      
-      requests: {}
-      limits: {}
+      requests:
+        cpu: 0.1
+        memory: 0.5Gi
+      limits:
+        cpu: 0.5
+        memory: 0.5Gi
+    rgw:
+      requests:
+        cpu: 0.1
+        memory: 0.5Gi
+      limits:
+        cpu: 0.5
+        memory: 0.5Gi
     mgr:
-      requests: {}
-      limits: {}
-    noobaa-core:      
-      requests: {}
-      limits: {}
-    noobaa-db:        
-      requests: {}
-      limits: {}
+      requests:
+        cpu: 0.1
+        memory: 0.5Gi
+      limits:
+        cpu: 0.5
+        memory: 0.5Gi
+    noobaa-core:
+      requests:
+        cpu: 0.25
+        memory: 0.5Gi
+      limits:
+        cpu: 0.5
+        memory: 0.5Gi
+    noobaa-db:
+      requests: 
+        cpu: 0.1
+        memory: 0.5Gi
+      limits:
+        cpu: 0.5
+        memory: 0.5Gi
   storageDeviceSets:    
   - name: ocs-deviceset    
     count: 1
-    resources: {}   
-    placement: {}    
     dataPVCTemplate:    
       spec:    
         storageClassName: local-sc-osd    
@@ -46,5 +69,13 @@ spec:
         resources:    
           requests:    
             storage: {{ ocs_osd_disk_size }}
+    placement: {}
     portable: true
     replica: 3
+    resources:
+      requests:
+        cpu: 0.25
+        memory: 1Gi
+      limits:
+        cpu: 0.5
+        memory: 2Gi
