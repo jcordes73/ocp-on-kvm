@@ -16,5 +16,8 @@
   roles:
   - kvm
 - hosts: bastionhost
+  environment:
+    KUBECONFIG: "{{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"
+    PATH: "{{ ocp_home }}/bin:{{ ansible_env.PATH }}"
   roles:
   - upi

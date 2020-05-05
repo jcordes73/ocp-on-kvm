@@ -1,12 +1,12 @@
-- name: Create disk for Worker VM
+- name: Create disk for Infra VM
   command: "qemu-img create -f qcow2 /var/lib/libvirt/images/{{ item }}.qcow2 {{ worker_node_disksize }}"
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
-  with_items: "{{ groups['workers'] }}"
+  with_items: "{{ groups['infra'] }}"
 - shell:
    cmd: virt-install --name {{ item }} --memory {{ worker_node_memory }} --vcpus {{ worker_node_cpu }} --cpu "{{ cpu_model }}" --disk path=/var/lib/libvirt/images/{{ item }}.qcow2,format=qcow2,bus=virtio,io=threads --hvm --network bridge=br0,mac={{ hostvars[item]['ethernet'] }},model=virtio --install kernel={{ coreos_kernel }},initrd={{ coreos_initrd }},kernel_args_overwrite=yes,kernel_args="{{coreos_kernel_args}}/worker.ign" --os-type=linux --os-variant {{ os_variant }} --keymap={{ os_keymap }} --noautoconsole --wait=-1 --noreboot
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
-  loop: "{{ groups['workers'] }}"
-  register: create_worker_instances
+  loop: "{{ groups['infra'] }}"
+  register: create_infra_instances
   ignore_errors: yes
   async: 180
   poll: 0
@@ -17,16 +17,23 @@
   until: jobs.finished
   delay: 5
   retries: 36
-  with_items: "{{ create_worker_instances.results }}"
+  with_items: "{{ create_infra_instances.results }}"
 - name: Start Worker VM's
   virt:
     name: "{{ item }}"
     state: running
     autostart: yes
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
-  loop: "{{ groups['workers'] }}"
+  loop: "{{ groups['infra'] }}"
 - shell: "{{ ocp_home }}/bin/oc get csr --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig --no-headers=true | awk '{print $1}' | xargs {{ ocp_home }}/bin/oc adm certificate approve --kubeconfig={{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig | wc -l"
   register: certificate_approved_output
-  until: "certificate_approved_output.stdout|int >= 2*(groups['masters'] | length + groups['infra'] | length + groups['workers'] | length)"
+  until: "certificate_approved_output.stdout|int >= 2*(groups['masters'] | length + groups['infra'] | length)"
   retries: 60
   delay: 20
+- name: Label infra-nodes
+  command: "oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} node-role.kubernetes.io/infra=\"\" --overwrite=true"
+  with_items: "{{ groups['infra'] }}"
+- name: Create configmap
+  command: "oc create -f monitoring-configmap.yml -n openshift-monitoring"
+  args:
+    chdir: roles/upi/files

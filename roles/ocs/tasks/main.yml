@@ -52,9 +52,6 @@
   loop: "{{ groups['storage'] }}"
   loop_control:
     index_var: rack_index
-#- name: Dedicated Storage Nodes
-#  command: "oc adm taint nodes {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} node.ocs.openshift.io/storage=true:NoSchedule --overwrite=true"
-#  with_items: "{{ groups['storage'] }}"
 - name: Wait for storage nodes to be available
   shell: "oc get nodes -l cluster.ocs.openshift.io/openshift-storage= | grep Ready | wc -l"
   register: storage_nodes_available_result

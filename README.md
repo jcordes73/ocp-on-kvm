@@ -64,8 +64,12 @@ Run the dditional post-installation playbook
 for
 
 - SSO (using Keycloak)
-- OpenShift Container Storage (OCS)
-- Container Registry Storage (using OCS)
+
+## Install OCS
+
+To install OpenShift Container Storage (OCS) run
+
+	ansible-playbook -vvv -i inventory playbook-install-ocs.yml
 
 ## Remove OCS
 

@@ -20,6 +20,14 @@
     name: virt_use_nfs
     state: yes
     persistent: yes
+- shell: "oc get co image-registry -o json | jq -r '.status.conditions[]| select(.type==\"Available\")|.status'"
+  register: check_image_registry_operator_result
+  until: check_image_registry_operator_result.stdout is match("True")
+  retries: 60
+  delay: 10
+  failed_when:
+  - check_image_registry_operator_result.rc != 0
+  - check_image_registry_operator_result.stderr is not match(".*clusteroperators.config.openshift.io .* not found.*")
 - template:
     src: persistent-volume.yml.j2
     dest: /tmp/persistent-volume.yml
@@ -38,3 +46,13 @@
   - "\"already exists\" not in create_persistent_volume_claim_result.stderr"
 - shell: "oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{\"spec\":{\"managementState\": \"Managed\"}}'"
 - shell: "oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{\"spec\":{\"storage\":{\"pvc\":{\"claim\": \"registry-claim\"}}}}'"
+- pause:
+    seconds: 10
+- shell: "oc get co image-registry -o json | jq -r '.status.conditions[]| select(.type==\"Available\")|.status'"
+  register: check_image_registry_operator_result
+  until: check_image_registry_operator_result.stdout is match("True")
+  retries: 60
+  delay: 10
+  failed_when:
+  - check_image_registry_operator_result.rc != 0
+  - check_image_registry_operator_result.stderr is not match(".*clusteroperators.config.openshift.io .* not found.*")

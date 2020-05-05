@@ -9,6 +9,7 @@
   with_flattened:
   - "{{ groups['bootstrap'] }}"
   - "{{ groups['workers'] }}"
+  - "{{ groups['infra'] }}"
   - "{{ groups['masters'] }}"
   when: '"bastionhost" in group_names'
 - virt:
@@ -22,6 +23,7 @@
   with_flattened:
   - "{{ groups['bootstrap'] }}"
   - "{{ groups['workers'] }}"
+  - "{{ groups['infra'] }}"
   - "{{ groups['masters'] }}"
   when: '"bastionhost" in group_names'
 - file:
@@ -31,6 +33,7 @@
   with_flattened:
   - "{{ groups['bootstrap'] }}"
   - "{{ groups['workers'] }}"
+  - "{{ groups['infra'] }}"
   - "{{ groups['masters'] }}"
   when: '"bastionhost" in group_names'
 - virt:
