@@ -8,7 +8,7 @@ proxy:
 compute:
 - hyperthreading: {{ worker_node_cpu_hyperthreading }} 
   name: worker
-  replicas: 0
+  replicas: {{ groups['workers'] | length }}
 controlPlane:
   hyperthreading: {{ master_node_cpu_hyperthreading }}
   name: master

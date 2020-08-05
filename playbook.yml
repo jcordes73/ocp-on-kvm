@@ -1,20 +1,20 @@
-- hosts: bastionhost
-  roles:
-  - dns
-  - ntp
-  - tftp
-  - dhcp
-  - httpd
-  - rsyslog
-  - haproxy
-  - squid
-  - nexus
-  - nfs
-  - kvm
-- hosts: kvm
-  gather_facts: no
-  roles:
-  - kvm
+#- hosts: bastionhost
+#  roles:
+#  - dns
+#  - ntp
+#  - tftp
+#  - dhcp
+#  - httpd
+#  - rsyslog
+#  - haproxy
+#  - squid
+#  - nexus
+#  - nfs
+#  - kvm
+#- hosts: kvm
+#  gather_facts: no
+#  roles:
+#  - kvm
 - hosts: bastionhost
   environment:
     KUBECONFIG: "{{ ocp_home }}/{{ ocp_type }}/auth/kubeconfig"

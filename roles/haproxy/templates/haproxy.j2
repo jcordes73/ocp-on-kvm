@@ -28,7 +28,7 @@ global
 defaults
     mode                    tcp
     log                     global
-    option                  httplog
+    option                  tcplog
     option                  dontlognull
     option http-server-close
     option                  redispatch
@@ -46,7 +46,6 @@ frontend ssl-apiserver
     bind *:6443
     log global
     mode tcp
-    option httplog
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
     acl acl_api_server req.ssl_sni -m beg api.{{ocp_cluster_name}}
@@ -103,7 +102,7 @@ frontend http
 backend openshift_router_http
     log global
     mode tcp
-{% for host in groups['workers'] %}
+{% for host in groups['infra'] %}
     server worker0{{ loop.index }} {{ hostvars[host]['ansible_host'] }}:80 check
 {% endfor %}
 
@@ -116,7 +115,6 @@ frontend https
     log global
     bind {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:443
     mode tcp
-    option httplog
     tcp-request inspect-delay 5s
     tcp-request content accept if { req.ssl_hello_type 1 }
     use_backend openshift_router_https if { req.ssl_sni -m dom .apps.{{ocp_cluster_name}}.{{ocp_cluster_domain_name}} }
@@ -125,7 +123,7 @@ frontend https
 backend openshift_router_https
     log global
     mode tcp
-{% for host in groups['workers'] %}
+{% for host in groups['infra'] %}
     server worker0{{ loop.index }} {{ hostvars[host]['ansible_host'] }}:443 check
 {% endfor %}
 

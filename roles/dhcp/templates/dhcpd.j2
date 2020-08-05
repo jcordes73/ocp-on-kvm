@@ -40,7 +40,8 @@ host {{ hostvars[host]['inventory_hostname'] }} {
 }
 
 {% endfor %}
-{% for host in groups['masters'] %}
+{% for svrs in ['masters','infra','workers'] %}
+{% for host in groups[svrs] %}
 host {{ hostvars[host]['inventory_hostname'] }} {
   option host-name "{{ hostvars[host]['inventory_hostname'] }}.{{ocp_cluster_name}}.{{ocp_cluster_domain_name}}";
   hardware ethernet {{ hostvars[host]['ethernet'] }};
@@ -48,11 +49,4 @@ host {{ hostvars[host]['inventory_hostname'] }} {
 }
 
 {% endfor %}
-{% for host in groups['workers'] %}
-host {{ hostvars[host]['inventory_hostname'] }} {
-  option host-name "{{ hostvars[host]['inventory_hostname'] }}.{{ocp_cluster_name}}.{{ocp_cluster_domain_name}}";
-  hardware ethernet {{ hostvars[host]['ethernet'] }};
-  fixed-address {{ hostvars[host]['ansible_host'] }};
-}
-
 {% endfor %}

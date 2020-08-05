@@ -1,3 +1,7 @@
+- name: Include global variables
+  include_vars: ../../common/defaults/main.yml
+- name: Include variables from Nexus
+  include_vars: ../../nexus/defaults/main.yml
 - name: Create storage directory
   file:
     path: "{{ ocs_storage_dir }}"
@@ -8,6 +12,14 @@
   virt:
     name: "{{ item }}"
     state: shutdown
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  loop: "{{ groups['storage'] }}"
+- name: Set Max-Memory for Storage VM's
+  shell: "virsh setmaxmem {{ item }} {{ ocs_memory_size }} --config"
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  loop: "{{ groups['storage'] }}"
+- name: Set Memory for Storage VM's
+  shell: "virsh setmem {{ item }} {{ ocs_memory_size }} --config"
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   loop: "{{ groups['storage'] }}"
 - name: Create disk for Storage Monitor
@@ -177,5 +189,5 @@
   until: "(ocs_deployment_replicas_result.stdout | int) >= 1"
   retries: 30
   delay: 10
-- name: Make Ceph RBD the default storage-class
-  command: "oc patch storageclass ocs-storagecluster-ceph-rbd -p '{\"metadata\": {\"annotations\": {\"storageclass.kubernetes.io/is-default-class\": \"true\"}}}'"
+#- name: Make Ceph RBD the default storage-class
+#  command: "oc patch storageclass ocs-storagecluster-ceph-rbd -p '{\"metadata\": {\"annotations\": {\"storageclass.kubernetes.io/is-default-class\": \"true\"}}}'"

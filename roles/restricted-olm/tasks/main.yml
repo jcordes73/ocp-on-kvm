@@ -1,0 +1,114 @@
+- name: Include global variables
+  include_vars: ../../common/defaults/main.yml
+- name: Include variables from Nexus
+  include_vars: ../../nexus/defaults/main.yml
+- name: Build Red Hat Operator Catalog
+  shell: "oc adm catalog build --insecure --appregistry-org=redhat-operators --to={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1 -a {{ ocp_home }}/pull-secrets.json"
+  ignore_errors: yes
+- name: Build Community Operator Catalog
+  shell: "oc adm catalog build --insecure --appregistry-org=community-operators --to={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1 -a {{ ocp_home }}/pull-secrets.json"
+  ignore_errors: yes
+- name: Disable default OperatorSource
+  shell: "oc patch OperatorHub cluster --type json -p '[{\"op\": \"add\", \"path\": \"/spec/disableAllDefaultSources\", \"value\": true}]'"
+- name: Mirror Red Hat Operator Catalog
+  shell: "oc adm catalog mirror {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1 {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }} --insecure -a {{ ocp_home }}/pull-secrets.json"
+- name: Mirror Community Operator Catalog
+  shell: "oc adm catalog mirror {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1 {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }} --insecure -a {{ ocp_home }}/pull-secrets.json"
+- name: Apply ImageContentSourcePolicy for Red Hat Operators
+  shell: "oc apply -f redhat-operators-manifests/imageContentSourcePolicy.yaml"
+- name: Apply ImageContentSourcePolicy for Community Operators
+  shell: "oc apply -f community-operators-manifests/imageContentSourcePolicy.yaml"
+- name: Install skopeo
+  yum:
+    name: skopeo
+    state: installed
+- name: Copy Red Hat Operator images
+  shell: "skopeo copy --all --authfile {{ ocp_home }}/pull-secrets.json --dest-tls-verify=false docker://{{ item.split('=')[0] }} docker://{{ item.split('=')[1] }}"
+  with_items: "{{ lookup('file', 'redhat-operators-manifests/mapping.txt').splitlines() }}"
+  ignore_errors: yes
+- name: Copy Community Operator images
+  shell: "skopeo copy --all --authfile {{ ocp_home }}/pull-secrets.json --dest-tls-verify=false docker://{{ item.split('=')[0] }} docker://{{ item.split('=')[1] }}"
+  with_items: "{{ lookup('file', 'community-operators-manifests/mapping.txt').splitlines() }}"
+  ignore_errors: yes
+- name: Remove Red Hat Operators CatalogSource
+  shell: "oc delete catalogsources.operators.coreos.com redhat-operators -n openshift-marketplace"
+  register: remove_redhat_operators_catalogsource_result
+  failed_when:
+  - remove_redhat_operators_catalogsource_result.rc != 0
+  - remove_redhat_operators_catalogsource_result.stderr is not match(".*catalogsources.operators.coreos.com.*not found.*")
+- name: Remove Community Operators CatalogSource
+  shell: "oc delete catalogsources.operators.coreos.com community-operators -n openshift-marketplace"
+  register: remove_community_operators_catalogsource_result
+  failed_when:
+  - remove_community_operators_catalogsource_result.rc != 0
+  - remove_community_operators_catalogsource_result.stderr is not match(".*catalogsources.operators.coreos.com.*not found.*")
+- name: Create Red Hat Operators CatalogSource 
+  template:
+    src: redhat-operators-catalogsource.yml.j2
+    dest: /tmp/redhat-operators-catalogsource.yml
+- name: Create Red Hat Operators CatalogSource
+  shell: "oc create -f /tmp/redhat-operators-catalogsource.yml"
+- name: Create Community Operators CatalogSource
+  template:
+    src: community-operators-catalogsource.yml.j2
+    dest: /tmp/community-operators-catalogsource.yml
+- name: Create Community Operators CatalogSource
+  shell: "oc create -f /tmp/community-operators-catalogsource.yml"
+- name: Create configmap with Nexus certificate
+  shell: "oc create configmap registry-config --from-file={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}..{{ nexus_docker_secure_port }}=/opt/nexus/etc/ssl/caroot.cer -n openshift-config"
+  register: create_configmap_result
+  failed_when:
+  - create_configmap_result.rc != 0
+  - create_configmap_result.stderr is not match(".*configmaps .* already exists.*")
+- name: Patch Registry configuration
+  shell: "oc patch image.config.openshift.io/cluster --patch '{\"spec\":{\"additionalTrustedCA\":{\"name\":\"registry-config\"}}}' --type=merge"
+- name: Remove Podman images
+  shell: "podman images | grep -e redhat-operators -e community-operators | awk '{print $3}' | xargs -I{} podman rmi {} -f"
+  register: remove_images_result
+  failed_when:
+  - remove_images_result.rc != 0
+  - remove_images_result.stderr is not match(".*no such image.*")
+- name: Pull Red Hat Operator Catalog
+  shell: "podman pull --tls-verify=false {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1"
+- name: Tag Red Hat Operator Catalog
+  shell: "podman tag {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1 {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1-orig"
+- name: Create Red Hat Operator Dockerfile
+  template:
+    src: redhat-operators-catalog-Dockerfile.j2
+    dest: /tmp/redhat-operators-catalog-Dockerfile
+- name: Build custom Red Hat Operator offline catalog
+  shell: "podman build --format docker --tls-verify=false -t {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1 -f /tmp/redhat-operators-catalog-Dockerfile"
+- name: Push custom Red Hat Operator offline catalog
+  shell: "podman push --authfile=/root/ocp4/pull-secrets.json --tls-verify=false {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1"
+- name: Pull Community Operator Catalog
+  shell: "podman pull --tls-verify=false {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1"
+- name: Tag Community Operator Catalog
+  shell: "podman tag {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1 {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1-orig"
+- name: Create Community Operator Dockerfile
+  template:
+    src: community-operators-catalog-Dockerfile.j2
+    dest: /tmp/community-operators-catalog-Dockerfile
+- name: Build custom Community Operator offline catalog
+  shell: "podman build --format docker --tls-verify=false -t {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1 -f /tmp/community-operators-catalog-Dockerfile"
+- name: Push custom Community Operator offline catalog
+  shell: "podman push --authfile=/root/ocp4/pull-secrets.json --tls-verify=false {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1"
+- name: Refresh Red Hat Operators images on nodes (workaround for ifNotPresent policy
+  shell: "crictl pull {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1"
+  delegate_to: "{{ item }}"
+  with_flattened:
+  - "{{ groups['workers'] }}"
+  - "{{ groups['infra'] }}"
+  vars:
+    ansible_ssh_user: core
+    ansible_user: root
+    ansible_become: yes
+- name: Refresh Community Operators images on nodes (workaround for ifNotPresent policy
+  shell: "crictl pull {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1"
+  delegate_to: "{{ item }}"
+  with_flattened:
+  - "{{ groups['workers'] }}"
+  - "{{ groups['infra'] }}"
+  vars:
+    ansible_ssh_user: core
+    ansible_user: root
+    ansible_become: yes

@@ -1,47 +1,63 @@
+- name: Check if /var/lib/libvirt/images exists
+  stat:
+    path: /var/lib/libvirt/images
+  register: images_result
 - parted: device=/dev/{{ kvm_image_device }} unit=MiB
   register: image_share_info
+  when: not images_result.stat.exists
 - systemd:
     name: libvirtd
     state: stopped
+  when: not images_result.stat.exists
 - lvol:
     vg: vg_kvm_xfs
     lv: kvm_xfs_db
     force: yes 
     state: absent
+  when: not images_result.stat.exists
 - lvg:
     vg: vg_kvm_xfs
     state: absent
+  when: not images_result.stat.exists
 - parted:
     device: "/dev/{{ kvm_image_device }}"
     number: 1
     state: absent
   loop: '{{ image_share_info.partitions }}'
+  when: not images_result.stat.exists
 - parted:
     device: "/dev/{{ kvm_image_device }}"
     number: 1
     flags: [ lvm ]
     state: present
+  when: not images_result.stat.exists
 - lvg:
     vg: vg_kvm_xfs
     pvs: "/dev/{{ kvm_image_device }}1"
     state: present
+  when: not images_result.stat.exists
 - lvol:
     vg: vg_kvm_xfs
     lv: kvm_xfs_db
     pvs: "/dev/{{ kvm_image_device }}1"
     size: +100%PVS
     resizefs: yes
+  when: not images_result.stat.exists
 - filesystem:
     dev: /dev/vg_kvm_xfs/kvm_xfs_db
     fstype: xfs
+  when: not images_result.stat.exists
 - file:
     path: /var/lib/libvirt/images
     state: directory
+  when: not images_result.stat.exists
 - mount:
     src: /dev/mapper/vg_kvm_xfs-kvm_xfs_db
     path: /var/lib/libvirt/images
     fstype: xfs
     state: mounted
+  when: not images_result.stat.exists
 - systemd:
     name: libvirtd
     state: started
+  when: not images_result.stat.exists

@@ -1,3 +1,5 @@
+- name: Include global variables
+  include_vars: ../../common/defaults/main.yml
 - name: Install TFTP Server
   yum:
     name:
@@ -17,7 +19,7 @@
     mode: '0755'
 - name: Create image directory
   file:
-    path: /var/lib/tftpboot/images/RHEL-8.1
+    path: /var/lib/tftpboot/images/RHEL-{{ rhel_version }}
     state: directory
 - name: Copy UEFI BOOTX64.EFI to TFTP Boot
   copy:

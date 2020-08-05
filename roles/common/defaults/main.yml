@@ -1,1 +1,2 @@
 ocp_network_type: "OpenShiftSDN"
+rhel_version: 8.2

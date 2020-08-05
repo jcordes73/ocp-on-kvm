@@ -1,4 +1,4 @@
-nexus_version: 3.21.1-01
+nexus_version: 3.23.0-03
 nexus_port: 8081
 nexus_docker_port: 5555
 nexus_docker_secure_port: 5000

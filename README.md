@@ -30,7 +30,7 @@ Clone this git repository
 
 ### Bare-Metal servers
 
-N bare-metal Servers for installing RHEL 8.1 with KVM. For an all-in-one installation this can also be the Bastion Host.
+N bare-metal Servers for installing RHEL 8.2 with KVM. For an all-in-one installation this can also be the Bastion Host.
 
 ## Creating the Ansible inventory
 
@@ -59,7 +59,7 @@ Execute playbook
 
 Run the dditional post-installation playbook
 
-        ansible-playbook -vvv -i inventory playbook-customise.yml
+        ansible-playbook -vvv -i inventory playbook-customise.yml > ansible-customise.log 2>&1
 
 for
 
@@ -69,13 +69,13 @@ for
 
 To install OpenShift Container Storage (OCS) run
 
-	ansible-playbook -vvv -i inventory playbook-install-ocs.yml
+	ansible-playbook -vvv -i inventory playbook-install-ocs.yml > ansible-install-ocs.log 2>&1
 
 ## Remove OCS
 
 Run the following playbook to remove the OCS installation
 
-	ansible-playbook -vvv -i inventory playbook-remove-ocs.yml
+	ansible-playbook -vvv -i inventory playbook-remove-ocs.yml > ansible-remove-ocs.log 2>&1
 
 ## License
 

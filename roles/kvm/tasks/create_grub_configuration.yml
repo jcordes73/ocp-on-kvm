@@ -21,11 +21,11 @@
     state: enforcing
 - name: Copy vmlinuz
   copy:
-    src: "/var/www/html/RedHat-RHEL/8.1/images/pxeboot/vmlinuz"
-    dest: /var/lib/tftpboot/images/RHEL-8.1/vmlinuz
+    src: "/var/www/html/RedHat-RHEL/{{ rhel_version }}/images/pxeboot/vmlinuz"
+    dest: /var/lib/tftpboot/images/RHEL-{{ rhel_version }}/vmlinuz
     mode: '644'
 - name: Copy initramfs
   copy:
-    src: "/var/www/html/RedHat-RHEL/8.1/images/pxeboot/initrd.img"
-    dest: /var/lib/tftpboot/images/RHEL-8.1/initramfs.img
+    src: "/var/www/html/RedHat-RHEL/{{ rhel_version }}/images/pxeboot/initrd.img"
+    dest: /var/lib/tftpboot/images/RHEL-{{ rhel_version }}/initramfs.img
     mode: '644'

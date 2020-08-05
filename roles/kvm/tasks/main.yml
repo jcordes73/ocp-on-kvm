@@ -1,7 +1,9 @@
-- stat: path=/var/www/html/RedHat-RHEL/8.1/images/pxeboot/initrd.img
+- name: Include global variables
+  include_vars: ../../common/defaults/main.yml
+- stat: path=/var/www/html/RedHat-RHEL/{{ rhel_version }}/images/pxeboot/initrd.img
   register: initramfs_stat_result
   when: '"bastionhost" in group_names and kvm_install_type == "pxe"'
-- name: Mount RHEL 8.1 ISO and copy contents to HTTP server
+- name: Mount RHEL {{ rhel_version }} ISO and copy contents to HTTP server
   import_tasks: provide_iso.yml
   when: '"bastionhost" in group_names and kvm_install_type == "pxe" and not initramfs_stat_result.stat.exists'
 - name: Create Grub configuration for KVM Nodes

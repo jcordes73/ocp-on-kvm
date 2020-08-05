@@ -1,3 +1,5 @@
+- name: Include OCS variables
+  include_vars: ../../ocs/defaults/main.yml
 - shell: "lvdisplay --column --noheadings | awk '{print $1,$2}'"
   register: lv_result
   vars:
@@ -26,7 +28,7 @@
     ansible_ssh_user: core
     ansible_user: root
     ansible_become: yes
-- shell: "pvremove /dev/vdc"
+- shell: "pvremove {{ item }}"
   register: pvremove_result
   vars:
     ansible_ssh_user: core
@@ -35,3 +37,34 @@
   failed_when:
   - pvremove_result.rc != 0
   - pvremove_result.stderr is not match(".*No PV found on device.*")
+  - pvremove_result.stderr is not match(".*Device .* not found.*")
+  with_items:
+  - /dev/vdb
+  - /dev/vdc
+- name: Detach Storage Monitor disk from VM
+  command: "virsh detach-disk {{ inventory_hostname }} vdb --config"
+  register: detach_mon_disk_result
+  failed_when:
+  - detach_mon_disk_result.rc != 0
+  - detach_mon_disk_result.stderr is not match(".*No disk found whose source path or target is vdb.*")
+  delegate_to: "{{ hostvars[inventory_hostname]['kvm_host'] }}"
+- name: Detach Storage OSD disk from VM
+  command: "virsh detach-disk {{ inventory_hostname }} vdc --config"
+  register: detach_osd_disk_result
+  failed_when:
+  - detach_osd_disk_result.rc != 0
+  - detach_osd_disk_result.stderr is not match(".*No disk found whose source path or target is vdc.*")
+  delegate_to: "{{ hostvars[inventory_hostname]['kvm_host'] }}"
+- file:
+    path: "{{ ocs_storage_dir }}/{{ inventory_hostname }}-ocs-mon.qcow2"
+    state: absent
+  delegate_to: "{{ hostvars[inventory_hostname]['kvm_host'] }}"
+- file:
+    path: "{{ ocs_storage_dir }}/{{ inventory_hostname }}-ocs-osd.qcow2"
+    state: absent
+  delegate_to: "{{ hostvars[inventory_hostname]['kvm_host'] }}"
+- name: Start Storage VM's
+  virt:
+    name: "{{ inventory_hostname }}"
+    state: running
+  delegate_to: "{{ hostvars[inventory_hostname]['kvm_host'] }}"

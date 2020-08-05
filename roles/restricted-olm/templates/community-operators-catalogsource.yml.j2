@@ -1,0 +1,10 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: community-operators
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1
+  displayName: OCPLabs Red Hat Operator Catalog
+  publisher: grpc

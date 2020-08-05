@@ -15,7 +15,7 @@ lang en_US.UTF-8
 network  --onboot yes --bootproto dhcp --device {{ kvm_interface }} --noipv6 --activate
 
 # Use network installation
-url --url="http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-RHEL/8.1"
+url --url="http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-RHEL/{{ rhel_version }}"
 # Root password
 rootpw --iscrypted $6$oMfUABOznmu.0Fco$tAOYuCgw0stq./H8xi5A2TwMIT4lJhXRj6OB/YID.RRtjBDHb09mDJyOYOGRq88Fd6XQOFVarxfkkMCwqCJ821
 sshkey --username=root "{{ anaconda_ssh_key }}"

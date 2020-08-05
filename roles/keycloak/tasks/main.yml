@@ -130,6 +130,10 @@
     dest: /tmp/keycloak.cli
 - name: Configure PostgreSQL database
   command: "/opt/keycloak/bin/jboss-cli.sh -c --file=/tmp/keycloak.cli"
+  register: configure_postgres_result
+  until: configure_postgres_result.rc == 0
+  retries: 12
+  delay: 10
 - name: Restart keycloak service
   systemd:
     name: keycloak
@@ -165,9 +169,21 @@
   register: client_secret_result
 - set_fact:
    client_secret: "{{ client_secret_result.stdout }}"
+- name: Delete OpenShift Secret
+  command: "oc delete secret idp-secret -n openshift-config"
+  register: delete_secret_result
+  failed_when:
+  - delete_secret_result.rc != 0
+  - delete_secret_result.stderr is not match(".*secrets .* not found.*")
 - name: Create OpenShift Secret
   command: "oc create secret generic idp-secret --from-literal=clientSecret={{ client_secret }} -n openshift-config"
   ignore_errors: yes
+- name: Delete OpenShift configmap
+  command: "oc delete configmap ca-config-map -n openshift-config"
+  register: delete_configmap_result
+  failed_when:
+  - delete_configmap_result.rc != 0
+  - delete_configmap_result.stderr is not match(".*configmaps .* not found.*")
 - name: Create OpenShift Configmap
   command: "oc create configmap ca-config-map --from-file=ca.crt=/opt/nexus/etc/ssl/caroot.cer -n openshift-config"
   ignore_errors: yes

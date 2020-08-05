@@ -1,0 +1,3 @@
+FROM {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1-orig
+RUN cp /bundles.db /registry/bundles.db
+CMD ["--database", "/registry/bundles.db"]

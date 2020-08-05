@@ -1,26 +1,37 @@
+- name: Check if /var/www/html/RedHat-RHEL/{{ rhel_version }} exists
+  stat:
+    path: "/var/www/html/RedHat-RHEL/{{ rhel_version }}"
+  register: rhel_result
+- selinux:
+    state: disabled
+  when: not rhel_result.stat.exists
+- copy:
+    src: /mnt/rhel8-install/
+    dest: /var/www/html/RedHat-RHEL/{{ rhel_version }}
+  when: not rhel_result.stat.exists
 - file:
     path: /mnt/rhel8-install
     state: directory
-- name: Mount RHEL 8.1 DVD read-only
+  when: not rhel_result.stat.exists
+- name: Mount RHEL {{ rhel_version }} DVD read-only
   mount:
     path: /mnt/rhel8-install/
-    src: /root/rhel-8.1-x86_64-dvd.iso
+    src: /root/rhel-{{ rhel_version }}-x86_64-dvd.iso
     fstype: iso9660
     opts: loop,ro
     state: mounted
-- selinux:
-    state: disabled
-- file:
-    path: /var/www/html/RedHat-RHEL/8.1
-    state: directory
+  when: not rhel_result.stat.exists
 - copy:
     src: /mnt/rhel8-install/
-    dest: /var/www/html/RedHat-RHEL/8.1
-- name: Unmount RHEL 8.1 DVD
+    dest: /var/www/html/RedHat-RHEL/{{ rhel_version }}
+  when: not rhel_result.stat.exists
+- name: Unmount RHEL {{ rhel_version }} DVD
   mount:
     path: /mnt/rhel8-install/
     state: unmounted
+  when: not rhel_result.stat.exists
 - shell: chcon -Rv --type=httpd_sys_content_t /var/www/html
 - selinux:
     policy: targeted
     state: enforcing
+  when: not rhel_result.stat.exists
