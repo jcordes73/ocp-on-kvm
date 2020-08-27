@@ -37,3 +37,4 @@
   command: "oc create -f monitoring-configmap.yml -n openshift-monitoring"
   args:
     chdir: roles/upi/files
+  when: "groups['infra']|length > 0"

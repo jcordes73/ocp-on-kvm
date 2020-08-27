@@ -31,9 +31,7 @@
 - template:
     src: install-config.yaml.j2
     dest: "{{ ocp_home }}/{{ ocp_type }}/install-config.yaml"
-- template:
-    src: install-config.yaml.j2
-    dest: "{{ ocp_home }}/{{ ocp_type }}/install-config.yaml.ori"
 - shell: "{{ ocp_home }}/bin/openshift-install --dir {{ ocp_home }}/{{ ocp_type }} create manifests"
 - shell: "sed -i 's/\\(.*\\)mastersSchedulable.*/\\1mastersSchedulable: False/g' {{ ocp_home }}/{{ ocp_type  }}/manifests/cluster-scheduler-02-config.yml"
+  when: "groups['workers']|length > 0"
 - shell: "{{ ocp_home }}/bin/openshift-install --dir {{ ocp_home }}/{{ ocp_type }} create ignition-configs"

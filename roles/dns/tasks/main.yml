@@ -8,6 +8,7 @@
   - "{{ groups['kvm'] }}"
   - "{{ groups['masters'] }}"
   - "{{ groups['workers'] }}"
+  - "{{ groups['bootstrap'] }}"
 - name: Install dnsmasq
   yum:
     name: dnsmasq

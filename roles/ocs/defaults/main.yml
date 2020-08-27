@@ -1,4 +1,4 @@
 ocs_storage_dir: /var/lib/libvirt/images
 ocs_mon_disk_size: 10G
 ocs_osd_disk_size: 300G
-ocs_memory_size: 5G
+ocs_memory_size: 15G

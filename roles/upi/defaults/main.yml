@@ -1,5 +1,5 @@
 # Version and type
-ocp_release: 4.5.4
+ocp_release: 4.5.5
 ocp_type: bare-metal
 # Network
 ocp_network_cluster_cidr: "10.128.0.0/14"
@@ -11,7 +11,7 @@ cpu_model: "host-passthrough"
 bootstrap_node_memory: 6144
 bootstrap_node_cpu: 4
 bootstrap_node_disksize: 40G
-master_node_memory: 5938
+master_node_memory: 15360
 master_node_cpu: 4
 master_node_cpu_hyperthreading: Enabled
 master_node_disksize: 40G
@@ -28,5 +28,5 @@ os_keymap: de-de
 download_initramfs: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.5/4.5.2/rhcos-4.5.2-x86_64-installer-initramfs.x86_64.img
 download_kernel: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.5/4.5.2/rhcos-4.5.2-x86_64-installer-kernel-x86_64
 download_image_metal: https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.5/4.5.2/rhcos-4.5.2-x86_64-metal.x86_64.raw.gz
-download_client: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.5.4/openshift-client-linux.tar.gz
-download_installer: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.5.4/openshift-install-linux.tar.gz
+download_client: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.5.5/openshift-client-linux.tar.gz
+download_installer: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.5.5/openshift-install-linux.tar.gz

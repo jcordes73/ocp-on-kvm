@@ -17,7 +17,7 @@ virsh net-define bridge.xml
 virsh net-start br0
 virsh net-autostart br0
 
-nmcli con add type bridge con-name br0 ifname br0 ipv6.method ignore ipv4.method auto ipv4.dns {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }} ipv4.dns-search {{ocp_cluster_name}}.{{ocp_cluster_domain_name}} bridge.stp no
-nmcli con modify bridge0 connection.autoconnect-slaves 1
+nmcli con add ifname br0 type bridge autoconnect yes con-name br0 ipv6.method ignore ipv4.method auto ipv4.dns {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }} ipv4.dns-search {{ocp_cluster_name}}.{{ocp_cluster_domain_name}} bridge.stp no ipv4.dhcp-timeout 180 connection.autoconnect-slaves 1
+nmcli con add type bridge-slave ifname ${INTERFACE_NAME} autoconnect yes con-name br-${INTERFACE_NAME} master br0
+nmcli con down ${INTERFACE_NAME}
 nmcli con up br0
-nmcli con add type ethernet con-name br-${INTERFACE_NAME} ifname ${INTERFACE_NAME} master br0

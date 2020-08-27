@@ -50,3 +50,10 @@ host {{ hostvars[host]['inventory_hostname'] }} {
 
 {% endfor %}
 {% endfor %}
+{% if groups['workers']|length == 0 %}
+host {{ hostvars[groups['bootstrap'][0]]['inventory_hostname'] }} {
+  option host-name "{{ hostvars[groups['bootstrap'][0]]['inventory_hostname'] }}.{{ocp_cluster_name}}.{{ocp_cluster_domain_name}}";
+  hardware ethernet {{ hostvars[groups['bootstrap'][0]]['ethernet'] }};
+  fixed-address {{ hostvars[groups['bootstrap'][0]]['ansible_host'] }};
+}
+{% endif %}

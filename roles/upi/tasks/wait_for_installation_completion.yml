@@ -1,8 +1,7 @@
 - shell: "oc get co -o json | jq -r '.items[].status.conditions[]| select(.type==\"Available\")|.status' | grep False"
   register: operator_availability_result
+  retries: 30
+  delay: 30
   until: "operator_availability_result.stdout == \"\""
-  failed_when:
-  - operator_availability_result.rc == 2
-  retries: 60
-  delay: 10
+  ignore_errors: yes
 - shell: "{{ ocp_home }}/bin/openshift-install --dir {{ ocp_home }}/{{ ocp_type }} wait-for install-complete --log-level=debug"

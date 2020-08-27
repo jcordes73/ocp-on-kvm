@@ -102,9 +102,19 @@ frontend http
 backend openshift_router_http
     log global
     mode tcp
+{% if groups['infra']|length > 0 %}
 {% for host in groups['infra'] %}
     server worker0{{ loop.index }} {{ hostvars[host]['ansible_host'] }}:80 check
 {% endfor %}
+{% elif groups['workers']|length > 0 %}
+{% for host in groups['workers'] %}
+    server worker0{{ loop.index }} {{ hostvars[host]['ansible_host'] }}:80 check
+{% endfor %}
+{% else %}
+{% for host in groups['masters'] %}
+    server master0{{ loop.index }} {{ hostvars[host]['ansible_host'] }}:80 check
+{% endfor %}
+{% endif %}
 
 backend bastion_http
     log global
@@ -123,9 +133,19 @@ frontend https
 backend openshift_router_https
     log global
     mode tcp
+{% if groups['infra']|length > 0 %}
 {% for host in groups['infra'] %}
     server worker0{{ loop.index }} {{ hostvars[host]['ansible_host'] }}:443 check
 {% endfor %}
+{% elif groups['workers']|length > 0 %}
+{% for host in groups['workers'] %}
+    server worker0{{ loop.index }} {{ hostvars[host]['ansible_host'] }}:443 check
+{% endfor %}
+{% else %}
+{% for host in groups['masters'] %}
+    server master0{{ loop.index }} {{ hostvars[host]['ansible_host'] }}:443 check
+{% endfor %}
+{% endif %}
 
 backend bastion_https
     log global

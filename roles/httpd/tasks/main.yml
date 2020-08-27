@@ -19,6 +19,10 @@
   copy:
     src: httpd.conf
     dest: /etc/httpd/conf
+- name: Remove ssl.conf
+  file:
+    path: /etc/httpd/conf.d/ssl.conf
+    state: absent
 - name: Enable and start HTTPD service
   systemd:
     name: httpd

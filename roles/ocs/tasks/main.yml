@@ -11,7 +11,24 @@
 - name: Stop Storage VM's
   virt:
     name: "{{ item }}"
-    state: shutdown
+    command: shutdown
+  register: virt_shutdown_result
+  failed_when:
+  - virt_shutdown_result != 0
+  - virt_shutdown_result.msg is defined and virt_shutdown_result.msg is not match(".*domain is not running.*") 
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  loop: "{{ groups['storage'] }}"
+- name: Stop Storage VM's
+  virt:
+    name: "{{ item }}"
+    command: status
+  register: virt_shutdown_result
+  until: virt_shutdown_result.status == 'shutdown'
+  retries: 12
+  delay: 10
+  failed_when:
+  - virt_shutdown_result != 0
+  - virt_shutdown_result.msg is defined and virt_shutdown_result.msg is not match(".*domain is not running.*")
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   loop: "{{ groups['storage'] }}"
 - name: Set Max-Memory for Storage VM's
@@ -53,14 +70,20 @@
 - name: Start Storage VM's
   virt:
     name: "{{ item }}"
-    state: running
+    command: start
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   loop: "{{ groups['storage'] }}"
 - name: Label Storage Nodes
-  command: "oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} cluster.ocs.openshift.io/openshift-storage=\"\" --overwrite=true"
+  shell: "oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} cluster.ocs.openshift.io/openshift-storage=\"\" --overwrite=true"
+  register: label_node_result
+  until: label_node_result.rc == 0
+  retries: 30
+  delay: 10
   with_items: "{{ groups['storage'] }}"
 - name: Label Storage Nodes
   command: "oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} topology.rook.io/rack=rack{{ rack_index }} --overwrite=true"
+  retries: 30
+  delay: 10
   loop: "{{ groups['storage'] }}"
   loop_control:
     index_var: rack_index
@@ -73,9 +96,12 @@
 - name: Create local-storage project
   command: "oc new-project local-storage"
   register: create_local_storage_project_result
+  until: create_local_storage_project_result.rc == 0
   failed_when:
   - create_local_storage_project_result.rc != 0
   - '"already exists" not in create_local_storage_project_result.stderr'
+  retries: 5
+  delay: 30
 - name: Annotate local-storage project
   command: "oc annotate project local-storage openshift.io/node-selector='' --overwrite=true"
 - name: Create Local Storage Operator-Group
@@ -167,12 +193,6 @@
   until: "(noobaa_deployment_replicas_result.stdout | int) >= 1"
   retries: 30
   delay: 10
-- name: Wait for Bucket Operator to be available
-  shell: "oc get deployment.apps/lib-bucket-provisioner -n openshift-storage -o json | jq '.status.readyReplicas'"
-  register: bucket_deployment_replicas_result
-  until: "(bucket_deployment_replicas_result.stdout | int) >= 1"
-  retries: 30
-  delay: 10
 - name: Create storage-cluster template
   template:
     src: cluster-storage.yml.j2
@@ -189,5 +209,5 @@
   until: "(ocs_deployment_replicas_result.stdout | int) >= 1"
   retries: 30
   delay: 10
-#- name: Make Ceph RBD the default storage-class
-#  command: "oc patch storageclass ocs-storagecluster-ceph-rbd -p '{\"metadata\": {\"annotations\": {\"storageclass.kubernetes.io/is-default-class\": \"true\"}}}'"
+- name: Make Ceph RBD the default storage-class
+  command: "oc patch storageclass ocs-storagecluster-ceph-rbd -p '{\"metadata\": {\"annotations\": {\"storageclass.kubernetes.io/is-default-class\": \"true\"}}}'"

@@ -6,4 +6,4 @@
   - postgresql
   - keycloak
   - role: restricted-olm
-    when: ocp_install_type == "disconnected"
+    when: olm_install_type == "disconnected"

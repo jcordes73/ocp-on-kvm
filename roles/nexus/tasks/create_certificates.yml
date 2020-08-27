@@ -9,7 +9,7 @@
 - name: Create Certificate Signing Request
   shell:
     cmd: "keytool -certreq -alias jetty -keystore /opt/nexus/etc/ssl/keystore.jks -file /opt/nexus/etc/ssl/jetty.csr  -storepass 'password' -keypass 'password' -ext SAN=dns:{{ san_dns }},ip:{{ san_ip }}"
-    creates: opt/nexus/etc/ssl/jetty.csr
+    creates: /opt/nexus/etc/ssl/jetty.csr
 - name: Create OpenSSL config
   template:
     src: openssl.j2
