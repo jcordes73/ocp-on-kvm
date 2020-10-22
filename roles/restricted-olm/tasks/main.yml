@@ -3,17 +3,17 @@
 - name: Include variables from Nexus
   include_vars: ../../nexus/defaults/main.yml
 - name: Build Red Hat Operator Catalog
-  shell: "oc adm catalog build --insecure --appregistry-org=redhat-operators --to={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1 -a {{ ocp_home }}/pull-secrets.json"
+  shell: "oc adm catalog build --insecure --appregistry-org=redhat-operators --from=registry.redhat.io/openshift4/ose-operator-registry:v4.5 --to={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1 --filter-by-os='linux/amd64' -a {{ ocp_home }}/pull-secrets.json"
   ignore_errors: yes
 - name: Build Community Operator Catalog
-  shell: "oc adm catalog build --insecure --appregistry-org=community-operators --to={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1 -a {{ ocp_home }}/pull-secrets.json"
+  shell: "oc adm catalog build --insecure --appregistry-org=community-operators --from=registry.redhat.io/openshift4/ose-operator-registry:v4.5 --to={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1 --filter-by-os='linux/amd64' -a {{ ocp_home }}/pull-secrets.json"
   ignore_errors: yes
 - name: Disable default OperatorSource
   shell: "oc patch OperatorHub cluster --type json -p '[{\"op\": \"add\", \"path\": \"/spec/disableAllDefaultSources\", \"value\": true}]'"
 - name: Mirror Red Hat Operator Catalog
-  shell: "oc adm catalog mirror {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1 {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }} --insecure -a {{ ocp_home }}/pull-secrets.json"
+  shell: "oc adm catalog mirror {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/redhat-operators:v1 {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }} --filter-by-os='linux/amd64' --insecure -a {{ ocp_home }}/pull-secrets.json"
 - name: Mirror Community Operator Catalog
-  shell: "oc adm catalog mirror {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1 {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }} --insecure -a {{ ocp_home }}/pull-secrets.json"
+  shell: "oc adm catalog mirror {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }}/openshift-operators/community-operators:v1 {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}:{{ nexus_docker_secure_port }} --filter-by-os='linux/amd64' --insecure -a {{ ocp_home }}/pull-secrets.json"
 - name: Apply ImageContentSourcePolicy for Red Hat Operators
   shell: "oc apply -f redhat-operators-manifests/imageContentSourcePolicy.yaml"
 - name: Apply ImageContentSourcePolicy for Community Operators

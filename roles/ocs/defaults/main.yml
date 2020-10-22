@@ -1,4 +1,6 @@
 ocs_storage_dir: /var/lib/libvirt/images
-ocs_mon_disk_size: 10G
-ocs_osd_disk_size: 300G
+ocs_disk_size: 300G
 ocs_memory_size: 15G
+ocs_monitoring_retention_time: 24h
+ocs_monitoring_prometheus_claim_size: 5Gi
+ocs_monitoring_alertmanager_claim_size: 5Gi

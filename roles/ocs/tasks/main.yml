@@ -8,16 +8,72 @@
     state: directory
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   with_items: "{{ groups['storage'] }}"
+- systemd:
+    name: libvirtd
+    state: started
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
+- name: Start Storage VM's
+  virt:
+    name: "{{ item }}"
+    state: running
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items:
+  - "{{ groups['storage'] }}"
+- name: Start Storage VM's
+  virt:
+    name: "{{ item }}"
+    command: status
+  register: virt_startup_result
+  until: virt_startup_result.status == 'running'
+  retries: 12
+  delay: 10
+  failed_when:
+  - virt_startup_result != 0
+  - virt_startup_result.msg is defined and virt_startup_result.msg is not match(".*domain is running.*")
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  loop: "{{ groups['storage'] }}"
 - name: Stop Storage VM's
   virt:
     name: "{{ item }}"
-    command: shutdown
+    state: shutdown
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items:
+  - "{{ groups['storage'] }}"
+- name: Stop Storage VM's
+  virt:
+    name: "{{ item }}"
+    command: status
   register: virt_shutdown_result
+  until: virt_shutdown_result.status == 'shutdown'
+  retries: 12
+  delay: 10
   failed_when:
   - virt_shutdown_result != 0
-  - virt_shutdown_result.msg is defined and virt_shutdown_result.msg is not match(".*domain is not running.*") 
+  - virt_shutdown_result.msg is defined and virt_shutdown_result.msg is not match(".*domain is not running.*")
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   loop: "{{ groups['storage'] }}"
+- name: Create disk for Container Storage
+  command: "qemu-img create -f raw {{ ocs_storage_dir }}/{{ item }}-ocs.raw {{ ocs_disk_size }}"
+  args:
+    creates: "{{ ocs_storage_dir }}/{{ item }}-ocs.raw"
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
+- name: Attach Storage OSD disk to VM
+  command: "virsh attach-disk {{ item }} {{ ocs_storage_dir }}/{{ item }}-ocs.raw vdb --serial ocsdisk-{{ item }} --cache none --persistent"
+  register: attach_ocs_disk_result
+  failed_when:
+  - attach_ocs_disk_result.rc != 0
+  - attach_ocs_disk_result.stderr_lines is not match(".*target vdb already exists.*")
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
+- name: Stop Storage VM's
+  virt:
+    name: "{{ item }}"
+    state: shutdown
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items:
+  - "{{ groups['storage'] }}"
 - name: Stop Storage VM's
   virt:
     name: "{{ item }}"
@@ -39,50 +95,36 @@
   shell: "virsh setmem {{ item }} {{ ocs_memory_size }} --config"
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   loop: "{{ groups['storage'] }}"
-- name: Create disk for Storage Monitor
-  command: "qemu-img create -f qcow2 -o preallocation=full {{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2 {{ ocs_mon_disk_size }}"
-  args:
-    creates: "{{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2"
-  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
-  with_items: "{{ groups['storage'] }}"
-- name: Create disk for Storage OSD
-  command: "qemu-img create -f qcow2 -o preallocation=full {{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2 {{ ocs_osd_disk_size }}"
-  args:
-    creates: "{{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2"
-  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
-  with_items: "{{ groups['storage'] }}"
-- name: Attach Storage Monitor disk to VM
-  command: "virsh attach-disk {{ item }} {{ ocs_storage_dir }}/{{ item }}-ocs-mon.qcow2 vdb --cache none --config"
-  register: attach_mon_disk_result
-  failed_when:
-  - attach_mon_disk_result.rc != 0
-  - "\"target vdb already exists\" not in attach_mon_disk_result.stderr"
-  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
-  with_items: "{{ groups['storage'] }}"
-- name: Attach Storage OSD disk to VM
-  command: "virsh attach-disk {{ item }} {{ ocs_storage_dir }}/{{ item }}-ocs-osd.qcow2 vdc --cache none --config"
-  register: attach_osd_disk_result
-  failed_when:
-  - attach_osd_disk_result.rc != 0
-  - "\"target vdc already exists\" not in attach_osd_disk_result.stderr"
-  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
-  with_items: "{{ groups['storage'] }}"
 - name: Start Storage VM's
   virt:
     name: "{{ item }}"
-    command: start
+    state: running
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items:
+  - "{{ groups['storage'] }}"
+- name: Start Storage VM's
+  virt:
+    name: "{{ item }}"
+    command: status
+  register: virt_startup_result
+  until: virt_startup_result.status == 'running'
+  retries: 60
+  delay: 10
+  failed_when:
+  - virt_startup_result != 0
+  - virt_startup_result.msg is defined and virt_startup_result.msg is not match(".*domain is running.*")
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   loop: "{{ groups['storage'] }}"
 - name: Label Storage Nodes
   shell: "oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} cluster.ocs.openshift.io/openshift-storage=\"\" --overwrite=true"
   register: label_node_result
   until: label_node_result.rc == 0
-  retries: 30
+  retries: 60
   delay: 10
   with_items: "{{ groups['storage'] }}"
 - name: Label Storage Nodes
   command: "oc label node {{ item }}.{{ ocp_cluster_name }}.{{ocp_cluster_domain_name }} topology.rook.io/rack=rack{{ rack_index }} --overwrite=true"
-  retries: 30
+  retries: 60
   delay: 10
   loop: "{{ groups['storage'] }}"
   loop_control:
@@ -91,17 +133,17 @@
   shell: "oc get nodes -l cluster.ocs.openshift.io/openshift-storage= | grep Ready | wc -l"
   register: storage_nodes_available_result
   until: "{{ storage_nodes_available_result.stdout | int == groups['storage'] | length }}"
-  retries: 30
+  retries: 60
   delay: 10
 - name: Create local-storage project
   command: "oc new-project local-storage"
   register: create_local_storage_project_result
-  until: create_local_storage_project_result.rc == 0
+  until: create_local_storage_project_result.rc == 0 or create_local_storage_project_result.stderr is match(".*already exists.*")
   failed_when:
   - create_local_storage_project_result.rc != 0
-  - '"already exists" not in create_local_storage_project_result.stderr'
-  retries: 5
-  delay: 30
+  - create_local_storage_project_result.stderr is not match(".*already exists.*")
+  retries: 60
+  delay: 10
 - name: Annotate local-storage project
   command: "oc annotate project local-storage openshift.io/node-selector='' --overwrite=true"
 - name: Create Local Storage Operator-Group
@@ -142,11 +184,9 @@
   shell: "oc get daemonset.apps/{{ item }} -n local-storage -o json | jq '.status.numberReady'"
   register: local_storage_daemonsets_deployment_replicas_result
   with_items:
-  - local-disks-mon-local-diskmaker
-  - local-disks-mon-local-provisioner
-  - local-disks-osd-local-diskmaker
-  - local-disks-osd-local-provisioner
-  until: "(local_storage_daemonsets_deployment_replicas_result.stdout | int) >= 3"
+  - local-block-local-diskmaker
+  - local-block-local-provisioner
+  until: "(local_storage_daemonsets_deployment_replicas_result.stdout | int) >= 2"
   retries: 30
   delay: 10
 - name: Create openshift-storage namespace
@@ -203,6 +243,14 @@
   failed_when:
   - create_cluster_storage_result.rc != 0
   - '"already exists" not in create_cluster_storage_result.stderr'
+- name: Reduce resources on Noobaa Endpoint
+  command: "oc patch deployment.apps/noobaa-endpoint -p '{\"spec\": {\"containers\": { \"limits\": { \"cpu\": \"250m\", \"memory\": \"250M\" }, \"requests\": { \"cpu\": \"250m\", \"memory\": \"250M\" }}}'"
+  register: reduce_noobaa_resources_result
+  until: reduce_noobaa_resources_result.rc == 0
+  failed_when:
+  - reduce_noobaa_resources_result.rc != 0
+  retries: 120
+  delay: 10
 - name: Wait for OCS Operator to be available
   shell: "oc get deployment.apps/ocs-operator -n openshift-storage -o json | jq '.status.readyReplicas'"
   register: ocs_deployment_replicas_result
@@ -211,3 +259,9 @@
   delay: 10
 - name: Make Ceph RBD the default storage-class
   command: "oc patch storageclass ocs-storagecluster-ceph-rbd -p '{\"metadata\": {\"annotations\": {\"storageclass.kubernetes.io/is-default-class\": \"true\"}}}'"
+- name: Create monitoring config-map
+  template:
+    src: openshift-monitoring-config.yml.j2
+    dest: /tmp/openshift-monitoring-config.yml
+- name: Create monitoring config-map
+  command: "oc create -f /tmp/openshift-monitoring-config.yml -n openshift-monitoring"

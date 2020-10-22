@@ -1,4 +1,4 @@
-keycloak_version: 10.0.0
+keycloak_version: 11.0.2
 keycloak_http_port: 9080
 keycloak_https_port: 9443
 keycloak_admin_user: admin

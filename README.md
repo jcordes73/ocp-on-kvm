@@ -57,13 +57,17 @@ Execute playbook
 
 ## Post-Installation
 
-Run the dditional post-installation playbook
+Run the additional post-installation playbook
 
         ansible-playbook -vvv -i inventory playbook-customise.yml > ansible-customise.log 2>&1
 
 for
 
 - SSO (using Keycloak)
+
+Install additional application-services
+
+ansible-playbook -vvv --ask-vault-pass -i inventory playbook-install-middleware.yml > ansible-install-middleware.log 2>&1
 
 ## Install OCS
 

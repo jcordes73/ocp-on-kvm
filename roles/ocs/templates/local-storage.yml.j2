@@ -1,42 +1,22 @@
-apiVersion: "local.storage.openshift.io/v1"
-kind: "LocalVolume"
+apiVersion: local.storage.openshift.io/v1
+kind: LocalVolume
 metadata:
-  name: "local-disks-mon"
-  namespace: "local-storage" 
+  name: local-block
+  namespace: local-storage
+  labels:
+    app: ocs-storagecluster
 spec:
-  nodeSelector: 
+  nodeSelector:
     nodeSelectorTerms:
     - matchExpressions:
-        - key: kubernetes.io/hostname
+        - key: cluster.ocs.openshift.io/openshift-storage
           operator: In
           values:
-{% for host in groups['storage'] %}
-          - {{ hostvars[host]['inventory_hostname'] }}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}
-{% endfor %}
+          - ""
   storageClassDevices:
-    - storageClassName: "local-sc-mon"
-      volumeMode: Filesystem 
-      fsType: xfs 
-      devicePaths: 
-        - /dev/vdb
----
-apiVersion: "local.storage.openshift.io/v1"
-kind: "LocalVolume"
-metadata:
-  name: "local-disks-osd"
-  namespace: "local-storage" 
-spec:
-  nodeSelector: 
-    nodeSelectorTerms:
-    - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-{% for host in groups['storage'] %}
-          - {{ hostvars[host]['inventory_hostname'] }}.{{ ocp_cluster_name }}.{{ ocp_cluster_domain_name }}
-{% endfor %}
-  storageClassDevices:
-    - storageClassName: "local-sc-osd"
+    - storageClassName: localblock
       volumeMode: Block
-      devicePaths: 
-        - /dev/vdc
+      devicePaths:
+{% for host in groups['storage'] %}
+        - /dev/disk/by-id/virtio-ocsdisk-{{ host }}
+{% endfor %}

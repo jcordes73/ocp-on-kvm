@@ -3,23 +3,23 @@
     coreos_initrd: "http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-CoreOS/initramfs.img"
     coreos_kernel_args: "ip=dhcp console=tty0 console=ttyS0 consoleblank=0 rd.neednet=1 nameserver={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }} coreos.inst=yes coreos.inst.install_dev=vda coreos.inst.image_url=http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-CoreOS/rhcos-metal.raw.gz coreos.inst.ignition_url=http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-CoreOS"
 - name: Create disk for Boostrap VM
-  command: "qemu-img create -f qcow2 /var/lib/libvirt/images/{{ item }}.qcow2 {{ bootstrap_node_disksize }}"
+  command: "qemu-img create -f raw /var/lib/libvirt/images/{{ item }}.raw {{ bootstrap_node_disksize }}"
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   with_items: "{{ groups['bootstrap'] }}"
 - name: Create disk for Master VM's
-  command: "qemu-img create -f qcow2 /var/lib/libvirt/images/{{ item }}.qcow2 {{ master_node_disksize }}"
+  command: "qemu-img create -f raw /var/lib/libvirt/images/{{ item }}.raw {{ master_node_disksize }}"
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   delay: 30
   with_items: "{{ groups['masters'] }}"
 - shell:
-    cmd: virt-install --name {{ item }} --memory {{ bootstrap_node_memory }} --vcpus {{ bootstrap_node_cpu }} --cpu {{ cpu_model }} --disk path=/var/lib/libvirt/images/{{ item }}.qcow2,format=qcow2,bus=virtio,io=threads --hvm --network bridge=br0,mac={{ hostvars[item]['ethernet'] }},model=virtio --install kernel={{ coreos_kernel }},initrd={{ coreos_initrd }},kernel_args_overwrite=yes,kernel_args="{{coreos_kernel_args}}/bootstrap.ign" --os-type=linux --os-variant {{ os_variant }} --keymap={{ os_keymap }} --noautoconsole --wait=-1 --noreboot
+    cmd: virt-install --name {{ item }} --memory {{ bootstrap_node_memory }} --vcpus {{ bootstrap_node_cpu }} --cpu {{ cpu_model }} --disk path=/var/lib/libvirt/images/{{ item }}.raw,format=raw,bus=virtio,io=threads --hvm --network bridge=br0,mac={{ hostvars[item]['ethernet'] }},model=virtio --install kernel={{ coreos_kernel }},initrd={{ coreos_initrd }},kernel_args_overwrite=yes,kernel_args="{{coreos_kernel_args}}/bootstrap.ign" --os-type=linux --os-variant {{ os_variant }} --keymap={{ os_keymap }} --noautoconsole --wait=-1 --noreboot
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   with_items: "{{ groups['bootstrap'] }}"
   register: create_bootstrap_instance
   async: 180
   poll: 0
 - shell:
-   cmd: virt-install --name {{ item }} --memory {{ master_node_memory }} --vcpus {{ master_node_cpu }} --cpu {{ cpu_model }} --disk path=/var/lib/libvirt/images/{{ item }}.qcow2,format=qcow2,bus=virtio,io=threads --hvm --network bridge=br0,mac={{ hostvars[item]['ethernet'] }},model=virtio --install kernel={{ coreos_kernel }},initrd={{ coreos_initrd }},kernel_args_overwrite=yes,kernel_args="{{coreos_kernel_args}}/master.ign" --os-type=linux --os-variant {{ os_variant }} --keymap={{ os_keymap }} --noautoconsole --wait=-1 --noreboot
+   cmd: virt-install --name {{ item }} --memory {{ master_node_memory }} --vcpus {{ master_node_cpu }} --cpu {{ cpu_model }} --disk path=/var/lib/libvirt/images/{{ item }}.raw,format=raw,bus=virtio,io=threads --hvm --network bridge=br0,mac={{ hostvars[item]['ethernet'] }},model=virtio --install kernel={{ coreos_kernel }},initrd={{ coreos_initrd }},kernel_args_overwrite=yes,kernel_args="{{coreos_kernel_args}}/master.ign" --os-type=linux --os-variant {{ os_variant }} --keymap={{ os_keymap }} --noautoconsole --wait=-1 --noreboot
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
   loop: "{{ groups['masters'] }}"
   register: create_master_instances

@@ -1,8 +1,8 @@
 - name: Get PVs using Ceph
-  shell: "oc get pv | grep -e local-sc-mon -e local-sc-osd | awk '{ print $1}'"
+  shell: "oc get pv | grep -e localblock | awk '{ print $1}'"
   register: ceph_pvs
 - name: Get PVCs using Ceph
-  shell: "oc get pv -n openshift-storage | grep -e local-sc-mon -e local-sc-osd | awk '{ print $1}'"
+  shell: "oc get pv -n openshift-storage | grep -e localblock | awk '{ print $1}'"
   register: ceph_pvcs
 - name: Delete Storage-Cluster
   command: "oc delete storagecluster -n openshift-storage --all --wait=true  --timeout=5m"
@@ -15,10 +15,11 @@
   register: delete_cluster_storage_project_result
   until: delete_cluster_storage_project_result.stderr is match(".*namespaces .* not found.*")
   delay: 10
-  retries: 30 
+  retries: 60 
   failed_when:
   - delete_cluster_storage_project_result.rc != 0
   - delete_cluster_storage_project_result.stderr is not match(".*namespaces .* not found.*")
+  - delete_cluster_storage_project_result.stderr is not match(".*Unable to connect to the server.*")
 - name: Get storage nodes
   shell: "oc get nodes -l cluster.ocs.openshift.io/openshift-storage= --no-headers | awk '{print $1}'"
   register: storage_nodes
@@ -26,6 +27,8 @@
   file:
     path: /var/lib/rook
     state: absent
+  delay: 10
+  retries: 5
   delegate_to: "{{ item }}"
   with_flattened:
   - "{{ groups['storage'] }}"
@@ -49,6 +52,8 @@
 - name: Remove Storage Cluster CRDs
   command: "oc delete crd backingstores.noobaa.io bucketclasses.noobaa.io cephblockpools.ceph.rook.io cephclusters.ceph.rook.io cephfilesystems.ceph.rook.io cephnfses.ceph.rook.io cephobjectstores.ceph.rook.io cephobjectstoreusers.ceph.rook.io noobaas.noobaa.io ocsinitializations.ocs.openshift.io  storageclusterinitializations.ocs.openshift.io storageclusters.ocs.openshift.io  --wait=true --timeout=5m"
   register: remove_storage_cluster_crds_result
+  delay: 10
+  retries: 30
   failed_when:
   - remove_storage_cluster_crds_result.rc != 0
   - remove_storage_cluster_crds_result.stderr is not match(".*customresourcedefinitions.apiextensions.k8s.io .* not found.*")
@@ -89,3 +94,66 @@
   failed_when:
   - delete_pv_result.rc != 0
   - delete_pv_result.stderr is not match(".*persistentvolumes .* not found.*")
+- name: Detach Container Storage disk from VM
+  command: "virsh detach-disk {{ item }} vdb --persistent"
+  register: detach_ocs_disk_result
+  failed_when:
+  - detach_ocs_disk_result.rc != 0
+  - detach_ocs_disk_result.stderr_lines is not match(".*No disk found whose source path or target is vdb.*")
+  - detach_ocs_disk_result.stderr_lines is not match(".*disk vdb not found.*")
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
+- name: Delete Container Storage disk
+  file:
+    path: "{{ ocs_storage_dir }}/{{ item }}-ocs.raw"
+    state: absent
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items: "{{ groups['storage'] }}"
+- name: Stop Storage VM's
+  virt:
+    name: "{{ item }}"
+    state: shutdown
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items:
+  - "{{ groups['storage'] }}"
+- name: Stop Storage VM's
+  virt:
+    name: "{{ item }}"
+    command: status
+  register: virt_shutdown_result
+  until: virt_shutdown_result.status == 'shutdown'
+  retries: 30
+  delay: 10
+  failed_when:
+  - virt_shutdown_result != 0
+  - virt_shutdown_result.msg is defined and virt_shutdown_result.msg is not match(".*domain is not running.*")
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  loop: "{{ groups['storage'] }}"
+- name: Start Storage VM's
+  virt:
+    name: "{{ item }}"
+    state: running
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  with_items:
+  - "{{ groups['storage'] }}"
+- name: Start Storage VM's
+  virt:
+    name: "{{ item }}"
+    command: status
+  register: virt_startup_result
+  until: virt_startup_result.status == 'running'
+  retries: 30
+  delay: 10
+  failed_when:
+  - virt_startup_result != 0
+  - virt_startup_result.msg is defined and virt_startup_result.msg is not match(".*domain is running.*")
+  delegate_to: "{{ hostvars[item]['kvm_host'] }}"
+  loop: "{{ groups['storage'] }}"
+- name: Wait until OpenShift Cluster is available
+  shell: "oc get nodes"
+  register: oc_nodes_result
+  until: oc_nodes_result.rc == 0
+  retries: 30
+  delay: 10
+  failed_when:
+  - oc_nodes_result.rc != 0
