@@ -1,7 +1,8 @@
 - set_fact:
     coreos_kernel: "http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-CoreOS/vmlinuz"
     coreos_initrd: "http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-CoreOS/initramfs.img"
-    coreos_kernel_args: "ip=dhcp console=tty0 console=ttyS0 consoleblank=0 rd.neednet=1 nameserver={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }} coreos.inst=yes coreos.inst.install_dev=vda coreos.inst.image_url=http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-CoreOS/rhcos-metal.raw.gz coreos.inst.ignition_url=http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-CoreOS"
+    coreos_rootfs: "http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-CoreOS/rootfs.img"
+    coreos_kernel_args: "ip=dhcp console=tty0 console=ttyS0 consoleblank=0 rd.neednet=1 nameserver={{ hostvars[groups['bastionhost'][0]]['ansible_host'] }} coreos.inst=yes coreos.inst.install_dev=vda coreos.live.rootfs_url=http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-CoreOS/rootfs.img coreos.inst.ignition_url=http://{{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}/RedHat-CoreOS"
 - name: Create disk for Boostrap VM
   command: "qemu-img create -f raw /var/lib/libvirt/images/{{ item }}.raw {{ bootstrap_node_disksize }}"
   delegate_to: "{{ hostvars[item]['kvm_host'] }}"
