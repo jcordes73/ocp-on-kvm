@@ -13,18 +13,34 @@
   - worker.ign
 - get_url:
     url: "{{ download_kernel }}"
-    dest: /var/www/html/RedHat-CoreOS/vmlinuz
+    dest: "/var/www/html/RedHat-CoreOS/vmlinuz-{{ocp_release}}"
   retries: 2
   delay: 3
   register: result
   until: result is succeeded
+- file:
+    path: /var/www/html/RedHat-CoreOS/vmlinuz
+    state: absent
+- file:
+     src: "/var/www/html/RedHat-CoreOS/vmlinuz-{{ocp_release}}"
+     dest: /var/www/html/RedHat-CoreOS/vmlinuz
+     state: link
+     remote_src: yes
 - get_url:
     url: "{{ download_initramfs }}"
-    dest: /var/www/html/RedHat-CoreOS/initramfs.img
+    dest: "/var/www/html/RedHat-CoreOS/initramfs.img-{{ocp_release}}"
   retries: 2
   delay: 3
   register: result
   until: result is succeeded
+- file:
+    path: /var/www/html/RedHat-CoreOS/initramfs.img
+    state: absent
+- file:
+     src: "/var/www/html/RedHat-CoreOS/initramfs.img-{{ocp_release}}"
+     dest: /var/www/html/RedHat-CoreOS/initramfs.img
+     state: link
+     remote_src: yes
 - get_url:
     url: "{{ download_image_metal }}"
     dest: /var/www/html/RedHat-CoreOS/rhcos-{{ ocp_release }}-metal.raw.gz
