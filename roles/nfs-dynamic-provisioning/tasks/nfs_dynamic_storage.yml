@@ -1,0 +1,39 @@
+- file:
+    path: /exports/ocp-dynamic-storage
+    state: directory
+    mode: "775"
+    owner: nobody
+    group: nobody
+    recurse: yes
+- lineinfile:
+    path: /etc/exports
+    line: "/exports/ocp-dynamic-storage {{ dhcp_subnet }}/24(rw,root_squash)"
+- systemd:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+  with_items:
+  - nfs-server
+  - rpcbind
+- command: "oc new-project nfs-dynamic-storage"
+  ignore_errors: yes
+- command: "oc apply -f rbac.yml"
+  args:
+    chdir: roles/nfs-dynamic-provisioning/files
+  ignore_errors: yes
+- command: "oc adm policy add-scc-to-user hostmount-anyuid system:serviceaccount:nfs-dynamic-storage:nfs-dynamic-provisioner-sa"
+- command: "oc create -f nfs-storageclass.yml"
+  args:
+    chdir: roles/nfs-dynamic-provisioning/files
+  ignore_errors: yes
+- template:
+    src: nfs_dynamic_provisioner.yml.j2
+    dest: /tmp/nfs_dynamic_provisioner.yml
+- shell: "oc create -f /tmp/nfs_dynamic_provisioner.yml -n nfs-dynamic-storage"
+- name: Wait for NFS Dynamic Storage Operator to be available
+  shell: "oc get deployment.apps/nfs-dynamic-provisioner -n nfs-dynamic-storage -o json | jq '.status.readyReplicas'"
+  register: nfs_dynamic_storage_operator_deployment_replicas_result
+  until: "(nfs_dynamic_storage_operator_deployment_replicas_result.stdout | int) >= 1"
+  retries: 30
+  delay: 10
+- command: "oc patch storageclass nfs-dynamic -p '{\"metadata\": {\"annotations\": {\"storageclass.kubernetes.io/is-default-class\": \"true\"}}}'"

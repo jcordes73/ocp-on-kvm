@@ -21,3 +21,4 @@
     PATH: "{{ ocp_home }}/bin:{{ ansible_env.PATH }}"
   roles:
   - upi
+  - nfs-dynamic-provisioning

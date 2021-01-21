@@ -1,0 +1,6 @@
+- name: Include global variables
+  include_vars: ../../common/defaults/main.yml
+- name: Include variables from Nexus
+  include_vars: ../../nexus/defaults/main.yml
+- name: NFS Dynamic Provisioning
+  import_tasks: nfs_dynamic_storage.yml

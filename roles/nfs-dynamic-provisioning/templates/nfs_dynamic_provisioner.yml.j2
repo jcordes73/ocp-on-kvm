@@ -1,0 +1,38 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: nfs-dynamic-provisioner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nfs-dynamic-provisioner
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nfs-dynamic-provisioner
+    spec:
+      serviceAccountName: nfs-dynamic-provisioner-sa
+      containers:
+        - name: nfs-dynamic-provisioner
+          image: quay.io/external_storage/nfs-client-provisioner:latest
+          volumeMounts:
+            - name: nfs-provisioner-v
+              mountPath: /persistentvolumes
+          env:
+            - name: PROVISIONER_NAME
+              value: nfs-dynamic-provisioner
+            - name: NFS_SERVER
+              value: {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}
+            - name: NFS_PATH
+              value: /exports/ocp-dynamic-storage
+      volumes:
+       - name: nfs-provisioner-v
+         nfs:
+           server: {{ hostvars[groups['bastionhost'][0]]['ansible_host'] }}
+           path: /exports/ocp-dynamic-storage
+
+
+

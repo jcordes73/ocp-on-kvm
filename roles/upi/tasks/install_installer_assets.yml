@@ -27,6 +27,21 @@
      state: link
      remote_src: yes
 - get_url:
+    url: "{{ download_rootfs }}"
+    dest: "/var/www/html/RedHat-CoreOS/rootfs-{{ocp_release}}.img"
+  retries: 2
+  delay: 3
+  register: result
+  until: result is succeeded
+- file:
+    path: /var/www/html/RedHat-CoreOS/rootfs.img
+    state: absent
+- file:
+     src: "/var/www/html/RedHat-CoreOS/rootfs-{{ocp_release}}.img"
+     dest: /var/www/html/RedHat-CoreOS/rootfs.img
+     state: link
+     remote_src: yes
+- get_url:
     url: "{{ download_initramfs }}"
     dest: "/var/www/html/RedHat-CoreOS/initramfs.img-{{ocp_release}}"
   retries: 2
