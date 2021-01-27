@@ -9,7 +9,7 @@
     group: keycloak
 - name: Download Keycloak
   unarchive:
-    src: https://downloads.jboss.org/keycloak/{{ keycloak_version }}/keycloak-{{ keycloak_version }}.tar.gz
+    src: https://github.com/keycloak/keycloak/releases/download/{{ keycloak_version }}/keycloak-{{ keycloak_version }}.tar.gz
     dest: /opt
     remote_src: yes
     owner: keycloak
