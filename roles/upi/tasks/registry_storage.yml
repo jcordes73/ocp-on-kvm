@@ -41,6 +41,9 @@
     dest: /tmp/persistent-volume-claim.yml
 - shell: "oc create -f /tmp/persistent-volume-claim.yml -n openshift-image-registry"
   register: create_persistent_volume_claim_result
+  until: create_persistent_volume_claim_result.rc == 0
+  retries: 2
+  delay: 10
   failed_when:
   - create_persistent_volume_claim_result.rc != 0
   - "\"already exists\" not in create_persistent_volume_claim_result.stderr"
